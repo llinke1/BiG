@@ -1,0 +1,9 @@
+README.md
+setup.py
+BiG/__init__.py
+BiG/bispectrumExtractor.py
+BiG.egg-info/PKG-INFO
+BiG.egg-info/SOURCES.txt
+BiG.egg-info/dependency_links.txt
+BiG.egg-info/requires.txt
+BiG.egg-info/top_level.txt
