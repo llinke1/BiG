@@ -1,11 +1,11 @@
 Metadata-Version: 2.1
 Name: BiG
-Version: 0.1.0
+Version: 0.1.1
 Summary:  Code for measuring 3-D bispectra from density maps using GPUs
 Home-page: 
 Author: Laila Linke
 Author-email: laila.linke@uibk.ac.at
-Classifier: Development Status :: 1 - Planning
+Classifier: Development Status :: 2 - PreAlpha
 Classifier: Environment :: GPU :: NVIDIA CUDA :: 12 :: 12.1Intended Audience :: Science/Research
 Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
 Classifier: Operating System :: POSIX :: Linux

@@ -3,7 +3,6 @@ from BiG import bispectrumExtractor as BiG
 import argparse
 import os
 from pathlib import Path
-import time
 
 os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform" # This is needed so that GPU variables are freed if no longer needed
 
@@ -16,11 +15,9 @@ parser.add_argument("--Nmesh", help='Number of grid cells along one dimension', 
 parser.add_argument("--Nkbins", help='Number of k bins, will be binned linearily', type=int)
 parser.add_argument("--kmin", help='Minimal k [Mpc/h]', type=float)
 parser.add_argument("--kmax", help='Maximal k [Mpc/h]', type=float)
-parser.add_argument("--mode", help='Which k-triangles to calculate. Can be all or equilateral')
 parser.add_argument("--outfn", help='Prefix for output files')
 parser.add_argument("--infiles", help='File with names of density files')
 parser.add_argument("--verbose", help='Verbosity', type=bool, default=True)
-parser.add_argument("--doTiming", help='Whether to time the measurements', type=bool, default=True)
 
 args = parser.parse_args()
 
@@ -33,10 +30,6 @@ Nmesh=args.Nmesh
 Nkbins=args.Nkbins
 kmin=args.kmin
 kmax=args.kmax
-
-mode=args.mode
-if (mode != "equilateral") & (mode != "all"):
-    parser.error("Mode needs to be 'equilateral' or 'all'")
 
 outfn=args.outfn
 infiles=args.infiles
@@ -58,7 +51,6 @@ if args.verbose:
     print(f"Boxsize: {L} Mpc/h")
     print(f"Grid Cells (1D): {Nmesh}")
     print(f"ks: {kbins_lower}")
-    print(f"Triangles: {mode}")
     print(f"Reading density files from {infiles}")
     print(f"Writing output to {outfn}")
 
@@ -70,62 +62,30 @@ filenames=file.readlines()
 
 Xtract=BiG.bispectrumExtractor(L, Nmesh, kbinedges, args.verbose)
 
-
-
 if args.verbose:
     print("Finished initialization BispectrumExtractor")
 
-if args.doTiming:
-    time1=time.time()
+# # NORM CALCULATION
 
-# NORM CALCULATION
+# norm=Xtract.calculateBispectrumNormalization_slow(mode=mode)
 
-norm=Xtract.calculateBispectrumNormalization_slow(mode=mode)
+# if args.verbose:
+#     print("Finished calculating bispectrum norm")
 
-if args.doTiming:
-    time2=time.time()
-
-if args.verbose:
-    print("Finished calculating bispectrum norm")
-    if args.doTiming:
-        print(f"Needed {time2-time1} seconds to run")
-        time1=time2
-
-# BISPEC CALCULATION AND OUTPUT
+# POWERSPEC CALCULATION AND OUTPUT
 for f in filenames:
     if args.verbose:
-        print(f"Calculating bispectrum for {f}")
+        print(f"Calculating powerspectrum for {f}")
     
-    bispec=Xtract.calculateBispectrum_slow(f.strip(), mode=mode)
-
-
-    if args.doTiming:
-        time2=time.time()
-
-
+    powerspec=Xtract.calculatePowerspectrum(f.strip())
     if args.verbose:
-        print(f"Finished bispectrum calculation")
-        if args.doTiming:
-            print(f"Needed {time2-time1} seconds to run")
-            time1=time2
-
-    
+        print(f"Finished powerspectrum calculation")
 
     outfn_now=outfn+Path(f.strip()).stem+".dat"
 
     with open(outfn_now, "w") as o:
-        print("# k1 [h/Mpc] k2 [h/Mpc] k3 [h/Mpc] unnorm.Bispec norm norm.Bispec", file=o)
-        if mode=='equilateral':
-            for i in range(Nkbins):
-                print(kbins_mid[i], kbins_mid[i], kbins_mid[i], bispec[i], norm[i], bispec[i]/norm[i]*Xtract.prefactor, file=o)
-        elif mode=='all':
-            ix=0
-            for i in range(Nkbins):
-                for j in range(i, Nkbins):
-                    for k in range(j, Nkbins):
-                        print(kbins_mid[i], kbins_mid[j], kbins_mid[k], bispec[ix], norm[ix], bispec[ix]/norm[ix]*Xtract.prefactor, file=o)
-                        ix+=1
-        else:
-            raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
+        print("# k [h/Mpc] unnorm.Powerspec", file=o)
+        for i in range(Nkbins):
+            print(kbins_mid[i], powerspec[i],  file=o)
     if args.verbose:
         print(f"Written output to {outfn_now}")

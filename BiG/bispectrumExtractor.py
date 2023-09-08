@@ -70,7 +70,7 @@ class bispectrumExtractor:
         """
         field_real=nbk.BigFileMesh(filename, 'Field').to_real_field()
 
-        dev_field_real=device_put(np.array(field_real))
+        dev_field_real=device_put(np.array(field_real, dtype=np.float32))
         field_fourier=jnp.fft.fftshift(jnp.fft.fftn(dev_field_real))
         del dev_field_real
         return field_fourier
@@ -105,7 +105,7 @@ class bispectrumExtractor:
         Returns:
             np.ndarray: Array containing all Iks (on CPU)
         """
-        Iks=np.zeros((self.Nmesh, self.Nmesh, self.Nmesh, self.Nks), dtype=complex)
+        Iks=np.zeros((self.Nmesh, self.Nmesh, self.Nmesh, self.Nks), dtype=np.complex64)
         for i in range(self.Nks):
             Iks[:,:,:,i]=self.calculateIk(field_fourier, self.kbinedges[0][i], self.kbinedges[1][i])
         Iks=device_put(Iks, devices("cpu")[0])
@@ -284,3 +284,32 @@ class bispectrumExtractor:
             raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
         
         return normalization
+    
+
+
+
+    def calculatePowerspectrum(self, filename):
+        """Calculates the unnormalized Powerspectrum
+
+        Args:
+            filename (string): path to file containing real space density field (in nbodykit bigfile format)
+
+        Returns:
+            list: unnormalized bispectrum for each triangle configuration
+        """
+
+        if self.verbose:
+            print("Doing Fourier Transformation of density field")
+
+        field_fourier=self.getFourierField(filename)
+
+        if self.verbose:
+            print("Doing Powerspec calculation")
+        powerspec=[]
+
+        for i in range(self.Nks):
+            Ik=self.calculateIk(field_fourier, self.kbinedges[0][i], self.kbinedges[1][i])
+            tmp=jnp.sum(Ik**2)
+            powerspec.append(tmp)
+
+        return powerspec

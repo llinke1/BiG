@@ -1,3 +1,5 @@
 numpy
+argparse
+pathlib
 nbodykit
 jax
