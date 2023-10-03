@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='BiG',
-    version='0.1.1',
+    version='0.1.2',
     description=' Code for measuring 3-D bispectra from density maps using GPUs',
     url='',
     author='Laila Linke',
@@ -22,5 +22,4 @@ setup(
         'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering :: Astronomy',
     ],
-
 )

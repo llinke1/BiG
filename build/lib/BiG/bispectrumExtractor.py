@@ -175,6 +175,7 @@ class bispectrumExtractor:
         
         Iks=self.calculateIks(field_fourier)
 
+
         bispec=[]
         if mode=='equilateral':
             for i in range(self.Nks):
@@ -216,6 +217,7 @@ class bispectrumExtractor:
 
         if self.verbose:
             print("Doing Bispec calculation")
+
         bispec=[]
         if mode=='equilateral':
             for i in range(self.Nks):
@@ -225,13 +227,18 @@ class bispectrumExtractor:
         elif mode=='all':
             for i in range(self.Nks):
                 Ik1=self.calculateIk(field_fourier, self.kbinedges[0][i], self.kbinedges[1][i])
-                bispec.append(jnp.sum(Ik1**3))
-                for j in range(i+1, self.Nks):
-                    Ik2=self.calculateIk(field_fourier, self.kbinedges[0][j], self.kbinedges[1][j])
-                    bispec.append(jnp.sum(Ik1*Ik2**2))
-
-                    for k in range(j+1, self.Nks):
-                        Ik3=self.calculateIk(field_fourier, self.kbinedges[0][k], self.kbinedges[1][k])
+                for j in range(i, self.Nks):
+                    if(i==j):
+                        Ik2=Ik1
+                    else:
+                        Ik2=self.calculateIk(field_fourier, self.kbinedges[0][j], self.kbinedges[1][j])
+                    for k in range(j, self.Nks):
+                        if (k==i):
+                            Ik3=Ik1
+                        elif (k==j):
+                            Ik3=Ik2
+                        else:
+                            Ik3=self.calculateIk(field_fourier, self.kbinedges[0][k], self.kbinedges[1][k])
                         tmp=jnp.sum(Ik1*Ik2*Ik3)
                         del Ik3
                         bispec.append(tmp)
@@ -269,13 +276,21 @@ class bispectrumExtractor:
                 tmp=jnp.sum(Norm1**3)
                 normalization.append(tmp)
 
-                for j in range(i+1, self.Nks):
-                    Norm2=self.calculateIk(Ones, self.kbinedges[0][j], self.kbinedges[1][j])
+                for j in range(i, self.Nks):
+                    if i==j:
+                        Norm2=Norm1
+                    else:
+                        Norm2=self.calculateIk(Ones, self.kbinedges[0][j], self.kbinedges[1][j])
                     tmp=jnp.sum(Norm1*Norm2**2)
                     normalization.append(tmp)
 
-                    for k in range(j+1, self.Nks):
-                        Norm3=self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k])
+                    for k in range(j, self.Nks):
+                        if k==i:
+                            Norm3=Norm1
+                        elif k==j:
+                            Norm3=Norm2
+                        else:
+                            Norm3=self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k])
                         tmp=jnp.sum(Norm1*Norm2*Norm3)
                         del Norm3
                         normalization.append(tmp)
