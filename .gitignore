@@ -1,1 +1,4 @@
 examples/
+__pycache__/
+tests/__pycache__/
+BiG.egg-info/
