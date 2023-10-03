@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: BiG
-Version: 0.1.1
+Version: 0.1.2
 Summary:  Code for measuring 3-D bispectra from density maps using GPUs
 Home-page: 
 Author: Laila Linke
