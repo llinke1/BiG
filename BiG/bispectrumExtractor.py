@@ -151,8 +151,9 @@ class bispectrumExtractor:
             for i in range(self.Nks):
                 for j in range(i, self.Nks):
                     for k in range(j, self.Nks):
-                        tmp=np.sum(Norms[:,:,:,i]*Norms[:,:,:,j]*Norms[:,:,:,k])
-                        normalization.append(tmp)
+                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
+                            tmp=np.sum(Norms[:,:,:,i]*Norms[:,:,:,j]*Norms[:,:,:,k])
+                            normalization.append(tmp)
         
         return normalization
 
@@ -187,8 +188,9 @@ class bispectrumExtractor:
             for i in range(self.Nks):
                 for j in range(i, self.Nks):
                     for k in range(j, self.Nks):
-                        tmp=np.sum(Iks[:,:,:,i]*Iks[:,:,:,j]*Iks[:,:,:,k])
-                        bispec.append(tmp)
+                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
+                            tmp=np.sum(Iks[:,:,:,i]*Iks[:,:,:,j]*Iks[:,:,:,k])
+                            bispec.append(tmp)
         else:
             raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
         
@@ -231,15 +233,16 @@ class bispectrumExtractor:
                     else:
                         Ik2=self.calculateIk(field_fourier, self.kbinedges[0][j], self.kbinedges[1][j])
                     for k in range(j, self.Nks):
-                        if (k==i):
-                            Ik3=Ik1
-                        elif (k==j):
-                            Ik3=Ik2
-                        else:
-                            Ik3=self.calculateIk(field_fourier, self.kbinedges[0][k], self.kbinedges[1][k])
-                        tmp=jnp.sum(Ik1*Ik2*Ik3)
-                        del Ik3
-                        bispec.append(tmp)
+                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
+                            if (k==i):
+                                Ik3=Ik1
+                            elif (k==j):
+                                Ik3=Ik2
+                            else:
+                                Ik3=self.calculateIk(field_fourier, self.kbinedges[0][k], self.kbinedges[1][k])
+                            tmp=jnp.sum(Ik1*Ik2*Ik3)
+                            del Ik3
+                            bispec.append(tmp)
         else:
             raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
         
@@ -283,15 +286,16 @@ class bispectrumExtractor:
                     normalization.append(tmp)
 
                     for k in range(j, self.Nks):
-                        if k==i:
-                            Norm3=Norm1
-                        elif k==j:
-                            Norm3=Norm2
-                        else:
-                            Norm3=self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k])
-                        tmp=jnp.sum(Norm1*Norm2*Norm3)
-                        del Norm3
-                        normalization.append(tmp)
+                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
+                            if k==i:
+                                Norm3=Norm1
+                            elif k==j:
+                                Norm3=Norm2
+                            else:
+                                Norm3=self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k])
+                            tmp=jnp.sum(Norm1*Norm2*Norm3)
+                            del Norm3
+                            normalization.append(tmp)
                     del Norm2
         else:
             raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")

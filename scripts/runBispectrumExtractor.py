@@ -131,8 +131,9 @@ for f in filenames:
             for i in range(Nkbins):
                 for j in range(i, Nkbins):
                     for k in range(j, Nkbins):
-                        print(kbins_mid[i], kbins_mid[j], kbins_mid[k], bispec[ix], norm[ix], bispec[ix]/norm[ix]*Xtract.prefactor, file=o)
-                        ix+=1
+                        if kbins_mid[k]<kbins_mid[i]+kbins_mid[j]:
+                            print(kbins_mid[i], kbins_mid[j], kbins_mid[k], bispec[ix], norm[ix], bispec[ix]/norm[ix]*Xtract.prefactor, file=o)
+                            ix+=1
         else:
             raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
     if args.verbose:
