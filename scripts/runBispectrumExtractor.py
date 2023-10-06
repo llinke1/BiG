@@ -16,6 +16,7 @@ parser.add_argument("--Nmesh", help='Number of grid cells along one dimension', 
 parser.add_argument("--Nkbins", help='Number of k bins, will be binned linearily', type=int)
 parser.add_argument("--kmin", help='Minimal k [Mpc/h]', type=float)
 parser.add_argument("--kmax", help='Maximal k [Mpc/h]', type=float)
+parser.add_argument("--kbinmode", help='How to bin the ks, can be lin or log', default='lin')
 parser.add_argument("--mode", help='Which k-triangles to calculate. Can be all or equilateral')
 parser.add_argument("--outfn", help='Prefix for output files')
 parser.add_argument("--infiles", help='File with names of density files')
@@ -45,8 +46,14 @@ if args.verbose:
     print("Finished reading CMD line arguments")
 
 # K BINS SETTING
+if args.kbinmode=='lin':
+    kbins=np.linspace(kmin, kmax, Nkbins+1)
+elif args.kbinmode=='log':
+    kbins=np.geomspace(kmin, kmax, Nkbins+1)
+else:
+    raise ValueError(f"kbinmode cannot be {args.kbinmode}, has to be either 'lin' or 'log'")
 
-kbins=np.linspace(kmin, kmax, Nkbins+1)
+
 kbins_lower=kbins[:-1]
 kbins_upper=kbins[1:]
 kbins_mid=0.5*(kbins_lower+kbins_upper)
@@ -58,6 +65,7 @@ if args.verbose:
     print(f"Boxsize: {L} Mpc/h")
     print(f"Grid Cells (1D): {Nmesh}")
     print(f"ks: {kbins_lower}")
+    print(f"Using {args.kbinmode} binning")
     print(f"Triangles: {mode}")
     print(f"Reading density files from {infiles}")
     print(f"Writing output to {outfn}")
