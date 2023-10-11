@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description='Measures 3D bispectrum.')
 
 parser.add_argument("--L", help='box side length [Mpc/h]', type=float)
 parser.add_argument("--Nmesh", help='Number of grid cells along one dimension', type=int)
-parser.add_argument("--Nkbins", help='Number of k bins, will be binned linearily', type=int)
+parser.add_argument("--Nkbins", help='Number of k bins, will be binned linearly or log depending on kbinmode', type=int)
 parser.add_argument("--kmin", help='Minimal k [Mpc/h]', type=float)
 parser.add_argument("--kmax", help='Maximal k [Mpc/h]', type=float)
 parser.add_argument("--kbinmode", help='How to bin the ks, can be lin or log', default='lin')
@@ -131,7 +131,7 @@ for f in filenames:
             for i in range(Nkbins):
                 for j in range(i, Nkbins):
                     for k in range(j, Nkbins):
-                        if kbins_mid[k]<kbins_mid[i]+kbins_mid[j]:
+                        if kbins_mid[k]<=kbins_mid[i]+kbins_mid[j]:
                             print(kbins_mid[i], kbins_mid[j], kbins_mid[k], bispec[ix], norm[ix], bispec[ix]/norm[ix]*Xtract.prefactor, file=o)
                             ix+=1
         else:

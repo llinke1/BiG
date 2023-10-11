@@ -233,7 +233,7 @@ class bispectrumExtractor:
                     else:
                         Ik2=self.calculateIk(field_fourier, self.kbinedges[0][j], self.kbinedges[1][j])
                     for k in range(j, self.Nks):
-                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
+                        if self.kbinedges[2][k]<=self.kbinedges[2][i]+self.kbinedges[2][j]:
                             if (k==i):
                                 Ik3=Ik1
                             elif (k==j):
@@ -257,7 +257,7 @@ class bispectrumExtractor:
             mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
 
         Warning:
-            This algorithm should be the same speed as calculateBispectrumNormalization for equilateral triangles, but significantly slower for all triangles!
+           This algorithm should be the same speed as calculateBispectrumNormalization for equilateral triangles, but significantly slower for all triangles!
 
         Returns:
             list: unnormalized bispectrum for each triangle configuration
@@ -274,19 +274,15 @@ class bispectrumExtractor:
             for i in range(self.Nks):
                 Norm1=self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i])
 
-                tmp=jnp.sum(Norm1**3)
-                normalization.append(tmp)
 
                 for j in range(i, self.Nks):
                     if i==j:
                         Norm2=Norm1
                     else:
                         Norm2=self.calculateIk(Ones, self.kbinedges[0][j], self.kbinedges[1][j])
-                    tmp=jnp.sum(Norm1*Norm2**2)
-                    normalization.append(tmp)
 
                     for k in range(j, self.Nks):
-                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
+                        if self.kbinedges[2][k]<=self.kbinedges[2][i]+self.kbinedges[2][j]:
                             if k==i:
                                 Norm3=Norm1
                             elif k==j:
