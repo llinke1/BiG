@@ -59,16 +59,23 @@ class bispectrumExtractor:
         return field * ((self.kmesh <= kmax) & (self.kmesh >= kmin))
 
 
-    def getFourierField(self, filename):
+    def getFourierField(self, filename, filetype='bigfile'):
         """Reads out real-space density field and gives back Fourier transformed field
 
         Args:
-            filename (string): path to file containing real space density field (in nbodykit bigfile format)
+            filename (string): path to file containing real space density field (in nbodykit bigfile or numpy format)
+            filetype (string): Either 'bigfile', if file is in nbodykit bigfile format or 'numpy' if file is in numpy binary format. Default: bigfile
 
         Returns:
             jnp.ndarray[complex]: Fourier transformed density field
         """
-        field_real=nbk.BigFileMesh(filename, 'Field').to_real_field()
+        if filetype=='bigfile':
+            field_real=nbk.BigFileMesh(filename, 'Field').to_real_field()
+        elif filetype=='numpy':
+            field_real=np.load(filename)
+        else:
+            raise ValueError(f"Filetype cannot be {filetype}, has to be either 'bigfile' or 'numpy'")
+
 
         dev_field_real=device_put(np.array(field_real, dtype=np.float32))
         field_fourier=jnp.fft.fftshift(jnp.fft.fftn(dev_field_real))
@@ -158,7 +165,7 @@ class bispectrumExtractor:
         return normalization
 
 
-    def calculateBispectrum(self, filename, mode='equilateral'):
+    def calculateBispectrum(self, filename, mode='equilateral', filetype='bigfile'):
         """Calculates the unnormalized Bispectrum with the faster (but more memory intensive) algorithm
 
         Args:
@@ -172,7 +179,7 @@ class bispectrumExtractor:
         Returns:
             list: unnormalized bispectrum for each triangle configuration
         """
-        field_fourier=self.getFourierField(filename)
+        field_fourier=self.getFourierField(filename, filetype)
         
         Iks=self.calculateIks(field_fourier)
 
@@ -197,7 +204,7 @@ class bispectrumExtractor:
         return bispec
         
 
-    def calculateBispectrum_slow(self, filename, mode='equilateral'):
+    def calculateBispectrum_slow(self, filename, mode='equilateral', filetype='bigfile'):
         """Calculates the unnormalized Bispectrum with the slower (but less memory intensive) algortihm
 
         Args:
@@ -214,7 +221,7 @@ class bispectrumExtractor:
         if self.verbose:
             print("Doing Fourier Transformation of density field")
 
-        field_fourier=self.getFourierField(filename)
+        field_fourier=self.getFourierField(filename, filetype)
 
         if self.verbose:
             print("Doing Bispec calculation")
@@ -301,7 +308,7 @@ class bispectrumExtractor:
 
 
 
-    def calculatePowerspectrum(self, filename):
+    def calculatePowerspectrum(self, filename, filetype='bigfile'):
         """Calculates the unnormalized Powerspectrum
 
         Args:
@@ -314,7 +321,7 @@ class bispectrumExtractor:
         if self.verbose:
             print("Doing Fourier Transformation of density field")
 
-        field_fourier=self.getFourierField(filename)
+        field_fourier=self.getFourierField(filename, filetype)
 
         if self.verbose:
             print("Doing Powerspec calculation")
