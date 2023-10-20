@@ -1,6 +1,5 @@
 
 import numpy as np
-import nbodykit.lab as nbk
 
 import jax.numpy as jnp
 from jax import device_put, devices
@@ -59,16 +58,22 @@ class bispectrumExtractor:
         return field * ((self.kmesh <= kmax) & (self.kmesh >= kmin))
 
 
-    def getFourierField(self, filename):
+    def getFourierField(self, filename, filetype='numpy'):
         """Reads out real-space density field and gives back Fourier transformed field
 
         Args:
-            filename (string): path to file containing real space density field (in nbodykit bigfile format)
+            filename (string): path to file containing real space density field (currently only numpy binary format is accepted)
+            filetype (string): 'numpy' if file is in numpy binary format. Default: numpy. Warning: Currently nothing else accepted
 
         Returns:
             jnp.ndarray[complex]: Fourier transformed density field
         """
-        field_real=nbk.BigFileMesh(filename, 'Field').to_real_field()
+        
+        if filetype=='numpy':
+            field_real=np.load(filename)
+        else:
+            raise ValueError(f"Filetype cannot be {filetype}, has to be 'numpy'")
+
 
         dev_field_real=device_put(np.array(field_real, dtype=np.float32))
         field_fourier=jnp.fft.fftshift(jnp.fft.fftn(dev_field_real))
@@ -151,18 +156,20 @@ class bispectrumExtractor:
             for i in range(self.Nks):
                 for j in range(i, self.Nks):
                     for k in range(j, self.Nks):
-                        tmp=np.sum(Norms[:,:,:,i]*Norms[:,:,:,j]*Norms[:,:,:,k])
-                        normalization.append(tmp)
+                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
+                            tmp=np.sum(Norms[:,:,:,i]*Norms[:,:,:,j]*Norms[:,:,:,k])
+                            normalization.append(tmp)
         
         return normalization
 
 
-    def calculateBispectrum(self, filename, mode='equilateral'):
+    def calculateBispectrum(self, filename, mode='equilateral', filetype='numpy'):
         """Calculates the unnormalized Bispectrum with the faster (but more memory intensive) algorithm
 
         Args:
-            filename (string): path to file containing real space density field (in nbodykit bigfile format)
+            filename (string): path to file containing real space density field (in numpy binary format)
             mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
+            filetype (str, optional): Type of density file. Currently only numpy is accepted. Default: 'numpy'
 
         Warning:
             This algorithm requires a lot of memory, in particular if we look at many k-bins! 
@@ -171,10 +178,9 @@ class bispectrumExtractor:
         Returns:
             list: unnormalized bispectrum for each triangle configuration
         """
-        field_fourier=self.getFourierField(filename)
+        field_fourier=self.getFourierField(filename, filetype)
         
         Iks=self.calculateIks(field_fourier)
-
 
         bispec=[]
         if mode=='equilateral':
@@ -188,20 +194,23 @@ class bispectrumExtractor:
             for i in range(self.Nks):
                 for j in range(i, self.Nks):
                     for k in range(j, self.Nks):
-                        tmp=np.sum(Iks[:,:,:,i]*Iks[:,:,:,j]*Iks[:,:,:,k])
-                        bispec.append(tmp)
+                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
+                            tmp=np.sum(Iks[:,:,:,i]*Iks[:,:,:,j]*Iks[:,:,:,k])
+                            bispec.append(tmp)
         else:
             raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
         
         return bispec
         
 
-    def calculateBispectrum_slow(self, filename, mode='equilateral'):
+    def calculateBispectrum_slow(self, filename, mode='equilateral', filetype='numpy'):
         """Calculates the unnormalized Bispectrum with the slower (but less memory intensive) algortihm
 
         Args:
-            filename (string): path to file containing real space density field (in nbodykit bigfile format)
+            filename (string): path to file containing real space density field (in numpy binary format)
             mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
+            filetype (str, optional): Type of density file. Currently only numpy is accepted. Default: 'numpy'
+
 
         Warning:
             This algorithm should be the same speed as calculateBispectrum for equilateral triangles, but significantly slower for all triangles!
@@ -213,11 +222,10 @@ class bispectrumExtractor:
         if self.verbose:
             print("Doing Fourier Transformation of density field")
 
-        field_fourier=self.getFourierField(filename)
+        field_fourier=self.getFourierField(filename, filetype)
 
         if self.verbose:
             print("Doing Bispec calculation")
-
         bispec=[]
         if mode=='equilateral':
             for i in range(self.Nks):
@@ -233,15 +241,16 @@ class bispectrumExtractor:
                     else:
                         Ik2=self.calculateIk(field_fourier, self.kbinedges[0][j], self.kbinedges[1][j])
                     for k in range(j, self.Nks):
-                        if (k==i):
-                            Ik3=Ik1
-                        elif (k==j):
-                            Ik3=Ik2
-                        else:
-                            Ik3=self.calculateIk(field_fourier, self.kbinedges[0][k], self.kbinedges[1][k])
-                        tmp=jnp.sum(Ik1*Ik2*Ik3)
-                        del Ik3
-                        bispec.append(tmp)
+                        if self.kbinedges[2][k]<=self.kbinedges[2][i]+self.kbinedges[2][j]:
+                            if (k==i):
+                                Ik3=Ik1
+                            elif (k==j):
+                                Ik3=Ik2
+                            else:
+                                Ik3=self.calculateIk(field_fourier, self.kbinedges[0][k], self.kbinedges[1][k])
+                            tmp=jnp.sum(Ik1*Ik2*Ik3)
+                            del Ik3
+                            bispec.append(tmp)
         else:
             raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
         
@@ -256,7 +265,7 @@ class bispectrumExtractor:
             mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
 
         Warning:
-            This algorithm should be the same speed as calculateBispectrumNormalization for equilateral triangles, but significantly slower for all triangles!
+           This algorithm should be the same speed as calculateBispectrumNormalization for equilateral triangles, but significantly slower for all triangles!
 
         Returns:
             list: unnormalized bispectrum for each triangle configuration
@@ -273,27 +282,24 @@ class bispectrumExtractor:
             for i in range(self.Nks):
                 Norm1=self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i])
 
-                tmp=jnp.sum(Norm1**3)
-                normalization.append(tmp)
 
                 for j in range(i, self.Nks):
                     if i==j:
                         Norm2=Norm1
                     else:
                         Norm2=self.calculateIk(Ones, self.kbinedges[0][j], self.kbinedges[1][j])
-                    tmp=jnp.sum(Norm1*Norm2**2)
-                    normalization.append(tmp)
 
                     for k in range(j, self.Nks):
-                        if k==i:
-                            Norm3=Norm1
-                        elif k==j:
-                            Norm3=Norm2
-                        else:
-                            Norm3=self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k])
-                        tmp=jnp.sum(Norm1*Norm2*Norm3)
-                        del Norm3
-                        normalization.append(tmp)
+                        if self.kbinedges[2][k]<=self.kbinedges[2][i]+self.kbinedges[2][j]:
+                            if k==i:
+                                Norm3=Norm1
+                            elif k==j:
+                                Norm3=Norm2
+                            else:
+                                Norm3=self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k])
+                            tmp=jnp.sum(Norm1*Norm2*Norm3)
+                            del Norm3
+                            normalization.append(tmp)
                     del Norm2
         else:
             raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
@@ -303,11 +309,13 @@ class bispectrumExtractor:
 
 
 
-    def calculatePowerspectrum(self, filename):
+    def calculatePowerspectrum(self, filename, filetype='numpy'):
         """Calculates the unnormalized Powerspectrum
 
         Args:
-            filename (string): path to file containing real space density field (in nbodykit bigfile format)
+            filename (string): path to file containing real space density field (in numpy binary format)
+            filetype (str, optional): Type of density file. Currently only numpy is accepted. Default: 'numpy'
+
 
         Returns:
             list: unnormalized bispectrum for each triangle configuration
@@ -316,7 +324,7 @@ class bispectrumExtractor:
         if self.verbose:
             print("Doing Fourier Transformation of density field")
 
-        field_fourier=self.getFourierField(filename)
+        field_fourier=self.getFourierField(filename, filetype)
 
         if self.verbose:
             print("Doing Powerspec calculation")

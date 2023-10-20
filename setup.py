@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='BiG',
-    version='0.1.2',
+    version='0.1.3',
     description=' Code for measuring 3-D bispectra from density maps using GPUs',
     url='',
     author='Laila Linke',
@@ -11,7 +11,6 @@ setup(
     install_requires=['numpy',
                       'argparse',
                       'pathlib',
-                      'nbodykit',
                       'jax'],
     classifiers=[
         'Development Status :: 2 - PreAlpha',

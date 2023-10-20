@@ -1,6 +1,5 @@
 
 import numpy as np
-import nbodykit.lab as nbk
 
 import jax.numpy as jnp
 from jax import device_put, devices
@@ -59,22 +58,21 @@ class bispectrumExtractor:
         return field * ((self.kmesh <= kmax) & (self.kmesh >= kmin))
 
 
-    def getFourierField(self, filename, filetype='bigfile'):
+    def getFourierField(self, filename, filetype='numpy'):
         """Reads out real-space density field and gives back Fourier transformed field
 
         Args:
-            filename (string): path to file containing real space density field (in nbodykit bigfile or numpy format)
-            filetype (string): Either 'bigfile', if file is in nbodykit bigfile format or 'numpy' if file is in numpy binary format. Default: bigfile
+            filename (string): path to file containing real space density field (currently only numpy binary format is accepted)
+            filetype (string): 'numpy' if file is in numpy binary format. Default: numpy. Warning: Currently nothing else accepted
 
         Returns:
             jnp.ndarray[complex]: Fourier transformed density field
         """
-        if filetype=='bigfile':
-            field_real=nbk.BigFileMesh(filename, 'Field').to_real_field()
-        elif filetype=='numpy':
+        
+        if filetype=='numpy':
             field_real=np.load(filename)
         else:
-            raise ValueError(f"Filetype cannot be {filetype}, has to be either 'bigfile' or 'numpy'")
+            raise ValueError(f"Filetype cannot be {filetype}, has to be 'numpy'")
 
 
         dev_field_real=device_put(np.array(field_real, dtype=np.float32))
@@ -165,12 +163,13 @@ class bispectrumExtractor:
         return normalization
 
 
-    def calculateBispectrum(self, filename, mode='equilateral', filetype='bigfile'):
+    def calculateBispectrum(self, filename, mode='equilateral', filetype='numpy'):
         """Calculates the unnormalized Bispectrum with the faster (but more memory intensive) algorithm
 
         Args:
-            filename (string): path to file containing real space density field (in nbodykit bigfile format)
+            filename (string): path to file containing real space density field (in numpy binary format)
             mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
+            filetype (str, optional): Type of density file. Currently only numpy is accepted. Default: 'numpy'
 
         Warning:
             This algorithm requires a lot of memory, in particular if we look at many k-bins! 
@@ -204,12 +203,14 @@ class bispectrumExtractor:
         return bispec
         
 
-    def calculateBispectrum_slow(self, filename, mode='equilateral', filetype='bigfile'):
+    def calculateBispectrum_slow(self, filename, mode='equilateral', filetype='numpy'):
         """Calculates the unnormalized Bispectrum with the slower (but less memory intensive) algortihm
 
         Args:
-            filename (string): path to file containing real space density field (in nbodykit bigfile format)
+            filename (string): path to file containing real space density field (in numpy binary format)
             mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
+            filetype (str, optional): Type of density file. Currently only numpy is accepted. Default: 'numpy'
+
 
         Warning:
             This algorithm should be the same speed as calculateBispectrum for equilateral triangles, but significantly slower for all triangles!
@@ -308,11 +309,13 @@ class bispectrumExtractor:
 
 
 
-    def calculatePowerspectrum(self, filename, filetype='bigfile'):
+    def calculatePowerspectrum(self, filename, filetype='numpy'):
         """Calculates the unnormalized Powerspectrum
 
         Args:
-            filename (string): path to file containing real space density field (in nbodykit bigfile format)
+            filename (string): path to file containing real space density field (in numpy binary format)
+            filetype (str, optional): Type of density file. Currently only numpy is accepted. Default: 'numpy'
+
 
         Returns:
             list: unnormalized bispectrum for each triangle configuration

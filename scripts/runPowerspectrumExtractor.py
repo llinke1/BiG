@@ -6,6 +6,7 @@ from pathlib import Path
 
 os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform" # This is needed so that GPU variables are freed if no longer needed
 
+print("Warning: Powerspectrum is calculated unnormalized!")
 
 # COMMANDLINE PARSING
 parser = argparse.ArgumentParser(description='Measures 3D bispectrum.')
@@ -18,6 +19,8 @@ parser.add_argument("--kmax", help='Maximal k [Mpc/h]', type=float)
 parser.add_argument("--outfn", help='Prefix for output files')
 parser.add_argument("--infiles", help='File with names of density files')
 parser.add_argument("--verbose", help='Verbosity', type=bool, default=True)
+parser.add_argument("--filetype", help="Type of density file. Must be numpy.", default='numpy')
+
 
 args = parser.parse_args()
 
@@ -65,19 +68,13 @@ Xtract=BiG.bispectrumExtractor(L, Nmesh, kbinedges, args.verbose)
 if args.verbose:
     print("Finished initialization BispectrumExtractor")
 
-# # NORM CALCULATION
-
-# norm=Xtract.calculateBispectrumNormalization_slow(mode=mode)
-
-# if args.verbose:
-#     print("Finished calculating bispectrum norm")
 
 # POWERSPEC CALCULATION AND OUTPUT
 for f in filenames:
     if args.verbose:
         print(f"Calculating powerspectrum for {f}")
     
-    powerspec=Xtract.calculatePowerspectrum(f.strip())
+    powerspec=Xtract.calculatePowerspectrum(f.strip(), filetype=args.filetype)
     if args.verbose:
         print(f"Finished powerspectrum calculation")
 

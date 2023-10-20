@@ -22,7 +22,7 @@ parser.add_argument("--outfn", help='Prefix for output files')
 parser.add_argument("--infiles", help='File with names of density files')
 parser.add_argument("--verbose", help='Verbosity', type=bool, default=True)
 parser.add_argument("--doTiming", help='Whether to time the measurements', type=bool, default=True)
-parser.add_argument("--filetype", help="Type of density file. Either bigfile or numpy.", default='bigfile')
+parser.add_argument("--filetype", help="Type of density file. Must be numpy.", default='numpy')
 
 args = parser.parse_args()
 

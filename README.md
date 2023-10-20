@@ -8,14 +8,13 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-This code can measure the 3D-bispectra from density maps using the FFT-based measurement algorithm presented for example in <a href="https://arxiv.org/abs/1904.11055"> Tomlinson+ (2019)</a>. The code is based on <a href="https://nbodykit.readthedocs.io/en/latest/index.html"> nbodykit </a>. Our implementation is similar to <a href="https://github.com/sjforeman/bskit/blob/master/README.md"> bskit </a>, but our code uses <a href="https://jax.readthedocs.io/en/latest/notebooks/quickstart.html">JAX </a> for GPU acceleration of the FFTs.
+This code can measure the 3D-bispectra from density maps using the FFT-based measurement algorithm presented for example in <a href="https://arxiv.org/abs/1904.11055"> Tomlinson+ (2019)</a>.  Our implementation is similar to <a href="https://github.com/sjforeman/bskit/blob/master/README.md"> bskit </a>, but our code uses <a href="https://jax.readthedocs.io/en/latest/notebooks/quickstart.html">JAX </a> for GPU acceleration of the FFTs.
 
 <!-- GETTING STARTED -->
 ## Getting Started
 
 ### Prerequisites
 * **python3**: This code will not work for python2! 
-* **nbodykit**: Check <a href="https://nbodykit.readthedocs.io/en/latest/getting-started/install.html"> here </a> for how to install it
 * **jax**: Check <a href="https://github.com/google/jax#installation"> here </a> for how to install it
 
 ### Installation
