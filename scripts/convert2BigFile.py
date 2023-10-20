@@ -1,5 +1,4 @@
 from nbodykit.source.catalog.file import HDFCatalog
-import h5py
 import argparse
 
 # COMMANDLINE PARSING
