@@ -16,15 +16,17 @@ parser.add_argument("--Nmesh", help='Number of grid cells along one dimension', 
 
 parser.add_argument("--field", help="Name of column in hdf with right particles, e.g. GrO")
 
-parser.add_argument("--k", help="Number of foldings. k=1 leads to L/2, k=2 leads to L/4 and so on.")
+parser.add_argument("--k", help="Number of foldings. k=1 leads to L/2, k=2 leads to L/4 and so on.", type=int)
 
+parser.add_argument("--ex", help="Fields of hdf file that need to be excluded", type=str, nargs='*')
 args = parser.parse_args()
 
 if not all(vars(args).values()):
     parser.error("Not the right number of command line parameters! All are required!")
 
+print(f"Excluding these fields from HDF file: {args.ex}")
 
-f=HDFCatalog(args.i)
+f=HDFCatalog(args.i, exclude=args.ex)
 
 array=np.array(f[args.field])
 
