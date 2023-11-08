@@ -23,6 +23,7 @@ parser.add_argument("--infiles", help='File with names of density files')
 parser.add_argument("--verbose", help='Verbosity', type=bool, default=True)
 parser.add_argument("--doTiming", help='Whether to time the measurements', type=bool, default=True)
 parser.add_argument("--filetype", help="Type of density file. Must be numpy.", default='numpy')
+parser.add_argument("--effectiveTriangles", help="Whether to calculate and output the effective k-triangles", type=bool, default=False)
 
 args = parser.parse_args()
 
@@ -70,6 +71,8 @@ if args.verbose:
     print(f"Triangles: {mode}")
     print(f"Reading density files from {infiles}")
     print(f"Writing output to {outfn}")
+    if args.effectiveTriangles:
+        print("Calculating and outputting effective triangles")
 
 # READ IN DENSITY FILES
 file=open(infiles, 'r')
@@ -100,6 +103,19 @@ if args.verbose:
         print(f"Needed {time2-time1} seconds to run")
         time1=time2
 
+# EFFECTIVE TRIANGLE CALCULATION
+if args.effectiveTriangles:
+    effTriangles=Xtract.calculateEffectiveTriangle_slow(mode=mode)
+
+    if args.doTiming:
+        time2=time.time()
+    
+    if args.verbose:
+        print("Finished calculating effective triangles")
+        if args.doTiming:
+            print(f"Needed {time2-time1} seconds to run")
+            time1=time2
+
 # BISPEC CALCULATION AND OUTPUT
 for f in filenames:
     if args.verbose:
@@ -123,17 +139,27 @@ for f in filenames:
     outfn_now=outfn+Path(f.strip()).stem+".dat"
 
     with open(outfn_now, "w") as o:
-        print("# k1 [h/Mpc] k2 [h/Mpc] k3 [h/Mpc] unnorm.Bispec norm norm.Bispec", file=o)
+        if args.effectiveTriangles:
+            print("# k1 [h/Mpc] k2 [h/Mpc] k3 [h/Mpc] k1_eff [h/Mpc] k2_eff [h/Mpc] k3_eff [h/Mpc] unnorm.Bispec norm norm.Bispec", file=o)
+        else:
+            print("# k1 [h/Mpc] k2 [h/Mpc] k3 [h/Mpc] unnorm.Bispec norm norm.Bispec", file=o)
         if mode=='equilateral':
             for i in range(Nkbins):
-                print(kbins_mid[i], kbins_mid[i], kbins_mid[i], bispec[i], norm[i], bispec[i]/norm[i]*Xtract.prefactor, file=o)
+                if args.effectiveTriangles:
+                    print(kbins_mid[i], kbins_mid[i], kbins_mid[i], effTriangles[i][0]/norm[i], effTriangles[i][0]/norm[i], effTriangles[i][0]/norm[i], bispec[i], norm[i], bispec[i]/norm[i]*Xtract.prefactor, file=o)
+                else:
+                    print(kbins_mid[i], kbins_mid[i], kbins_mid[i], bispec[i], norm[i], bispec[i]/norm[i]*Xtract.prefactor, file=o)
+
         elif mode=='all':
             ix=0
             for i in range(Nkbins):
                 for j in range(i, Nkbins):
                     for k in range(j, Nkbins):
                         if kbins_mid[k]<=kbins_mid[i]+kbins_mid[j]:
-                            print(kbins_mid[i], kbins_mid[j], kbins_mid[k], bispec[ix], norm[ix], bispec[ix]/norm[ix]*Xtract.prefactor, file=o)
+                            if args.effectiveTriangles:
+                                print(kbins_mid[i], kbins_mid[j], kbins_mid[k], effTriangles[ix][0]/norm[ix], effTriangles[ix][1]/norm[ix], effTriangles[ix][2]/norm[ix],  bispec[ix], norm[ix], bispec[ix]/norm[ix]*Xtract.prefactor, file=o)
+                            else:
+                                print(kbins_mid[i], kbins_mid[j], kbins_mid[k], bispec[ix], norm[ix], bispec[ix]/norm[ix]*Xtract.prefactor, file=o)
                             ix+=1
         else:
             raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")

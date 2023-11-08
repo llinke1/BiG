@@ -132,6 +132,21 @@ class bispectrumExtractor:
         Norms=device_put(Norms, devices("cpu")[0])
         return Norms
     
+    def calculateIk_Q(self):
+        """Calculates the Ik integral over the qs for all ks in kbinedges (needed for calculating effective triangles)
+
+        Warning:
+            The resulting Ik can be very large! Make sure this can fit in your RAM!
+
+        Returns:
+            np.ndarray: Array containing all Iks (on CPU)
+        """
+        Iks=np.zeros((self.Nmesh, self.Nmesh, self.Nmesh, self.Nks), dtype=np.complex64)
+        for i in range(self.Nks):
+            Iks[:,:,:,i]=self.calculateIk(self.kmesh, self.kbinedges[0][i], self.kbinedges[1][i])
+        Iks=device_put(Iks, devices("cpu")[0])
+        return Iks
+    
     def calculateBispectrumNormalization(self, mode='equilateral'):
         """Calculates the Bispectrum Normalization. Only needs to be run once for all simulations with the same L and Nmesh
 
@@ -161,6 +176,42 @@ class bispectrumExtractor:
                             normalization.append(tmp)
         
         return normalization
+
+    def calculateEffectiveTriangle(self, mode='equilateral'):
+        """Calculates the Effective Triangles. Only needs to be run once for all simulations with the same L and Nmesh
+
+        Args:
+            mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
+
+        Warning:
+            This algorithm requires a lot of memory, in particular if we look at many k-bins! 
+            Should be the same speed as calculateEffectiveTriangle_slow for equilateral triangles, but significantly faster for all triangles!
+            The effective triangles are not normalized! Need to be divided by output of calculateBispectrumNormalization!
+
+        Returns:
+            list: effective triangle configurations
+        """
+        Norms=self.calculateNorms()
+        Ik_Qs=self.calculateIk_Q()
+        effectiveKs=[]
+        if mode=='equilateral':
+            for i in range(self.Nks):
+               
+                k=np.sum(Norms[:,:,:,i]**2*Ik_Qs[:,:,:,i])
+                effectiveKs.append([k,k,k])
+        elif mode=='all':
+            for i in range(self.Nks):
+                for j in range(i, self.Nks):
+                    for k in range(j, self.Nks):
+                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
+                            k1=np.sum(Ik_Qs[:,:,:,i]*Norms[:,:,:,j]*Norms[:,:,:,k])
+                            k2=np.sum(Norms[:,:,:,i]*Ik_Qs[:,:,:,j]*Norms[:,:,:,k])
+                            k3=np.sum(Norms[:,:,:,i]*Norms[:,:,:,j]*Ik_Qs[:,:,:,k])
+
+                            effectiveKs.append([k1,k2,k3])
+        
+        return effectiveKs
+
 
 
     def calculateBispectrum(self, filename, mode='equilateral', filetype='numpy'):
@@ -270,7 +321,7 @@ class bispectrumExtractor:
         Returns:
             list: unnormalized bispectrum for each triangle configuration
         """
-        Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh))
+        Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=np.float16)
 
         normalization=[]
         if mode=='equilateral':
@@ -307,6 +358,70 @@ class bispectrumExtractor:
         return normalization
     
 
+    def calculateEffectiveTriangle_slow(self, mode='equilateral'):
+        """Calculates the (unnormalized) Effective Triangles with the slower (but less memory intensive) algortihm. Only needs to be run once for all simulations with the same L and Nmesh
+
+        uses Eq. 3.7 from https://arxiv.org/pdf/1908.01774.pdf
+        
+        Args:
+            mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
+
+        Warning:
+           This algorithm should be the same speed as calculateEffectiveTriangle for equilateral triangles, but significantly slower for all triangles!
+
+        Returns:
+            list: unnormalized bispectrum for each triangle configuration
+        """
+        Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=np.float16)
+
+        effectiveKs=[]
+
+        if mode=='equilateral':
+            for i in range(self.Nks):
+                Norm=self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i])
+                Ik_Q=self.calculateIk(self.kmesh, self.kbinedges[0][i], self.kbinedges[1][i])
+                k=jnp.sum(Norm**2*Ik_Q)
+                effectiveKs.append([k,k,k])
+        elif mode=='all':
+            for i in range(self.Nks):
+                Norm1=self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i])
+
+                Ik_Q1=self.calculateIk(self.kmesh, self.kbinedges[0][i], self.kbinedges[1][i])
+
+                for j in range(i, self.Nks):
+                    if i==j:
+                        Norm2=Norm1
+                        Ik_Q2=Ik_Q1
+                    else:
+                        Norm2=self.calculateIk(Ones, self.kbinedges[0][j], self.kbinedges[1][j])
+                        Ik_Q2=self.calculateIk(self.kmesh, self.kbinedges[0][j], self.kbinedges[1][j])
+
+
+                    for k in range(j, self.Nks):
+                        if self.kbinedges[2][k]<=self.kbinedges[2][i]+self.kbinedges[2][j]:
+                            if k==i:
+                                Norm3=Norm1
+                                Ik_Q3=Ik_Q1
+                            elif k==j:
+                                Norm3=Norm2
+                                Ik_Q3=Ik_Q2
+                            else:
+                                Norm3=self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k])
+                                Ik_Q3=self.calculateIk(self.kmesh, self.kbinedges[0][k], self.kbinedges[1][k])
+
+                            k1=jnp.sum(Ik_Q1*Norm2*Norm3)
+                            k2=jnp.sum(Norm1*Ik_Q2*Norm3)
+                            k3=jnp.sum(Norm1*Norm2*Ik_Q3)
+                            del Norm3
+                            del Ik_Q3
+                            effectiveKs.append([k1,k2,k3])
+
+                    del Norm2
+                    del Ik_Q2
+        else:
+            raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
+        
+        return effectiveKs
 
 
     def calculatePowerspectrum(self, filename, filetype='numpy'):
