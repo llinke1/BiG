@@ -24,12 +24,14 @@ To install this code, clone the gitrepo, go to the root folder and execute
 pip install .
 ```
 
+The files for the examples in the folder `tests` are accessible <a href=https://fileshare.uibk.ac.at/d/6e64b19298ac4e9290f3/> here </a>.
+
 <!-- USAGE EXAMPLES -->
 ## Usage
 
 ### Input
 #### Density Maps
-The density should be provided as nbodykit bigfile format. An example is given in `examples/`
+The density should be provided as regularly gridded in a three-dimensional numpy binary file. Examples are given here:  <a href=https://fileshare.uibk.ac.at/d/6e64b19298ac4e9290f3/> here </a>.
 
 #### List of density maps
 The bispectrum extractor reads the file names of density maps from an input file. An example is given in `tests/testRun_input.dat`
@@ -38,16 +40,21 @@ The bispectrum extractor reads the file names of density maps from an input file
 The bispectrum is measured with `python scripts/runBispectrumExtractor.py`. The command line arguments are
 * **L**: box side length [Mpc/h]
 * **Nmesh**: Number of grid cells along one dimension
-* **Nkbins**: Number of $k$ bins, will be binned logarithmically
+* **Nkbins**: Number of $k$ bins
 * **kmin**: Minimal $k$ [h/Mpc]
 * **kmax**: Maximal $k$ [h/Mpc]
+* **kbinmode**: How to bin the ks, can be lin or log
 * **mode**: Either `equilateral` (calculates only equilateral $k$-triangles) or `all` (calculates all triangle configurations)
 * **outfn**: Outputfileprefix
 * **infiles**: ASCII file with filenames of density files
+* **verbose**: Verbosity
+* **doTiming**: Whether to time the measurements
+* **filetype**: Type of density file. Currently only supports `numpy`
+* **effectiveTriangles**: Whether to calculate and output the effective $k$-triangles per bin.
 
 An example run would be
 ```
-python scripts/runBispectrumExtractor.py --L 1000 --Nmesh 512 --Nkbins 19 --kmin 0.01 --kmax 2 --mode equilateral --outfn tests/testRun_output --infiles tests/testRun_input.dat
+python ../scripts/runBispectrumExtractor.py --L 1000 --Nmesh 512 --Nkbins 19 --kmin 0.01 --kmax 1.91 --kbinmode lin --mode equilateral --outfn ../tests/testRun_output --infiles ../tests/testRun_input.dat --verbose True --doTiming True --filetype numpy --effectiveTriangles False
 ```
 
 ### Output
@@ -58,3 +65,14 @@ For each input file an outputfile is generated. These files are ASCII and the co
 4. Unnormalized Bispectrum
 5. Normalization of Bispectrum
 6. Bispectrum $B(k_1, k_2, k_3)$
+
+If the `effectiveTriangles` switch is set to `True`, the output will include the effective triangles, so the columns are
+1. $k_1$ [$h$/Mpc]
+2. $k_2$ [$h$/Mpc]
+3. $k_3$ [$h$/Mpc]
+4. $k_{eff, 1}$ [$h$/Mpc]
+5. $k_{eff, 2}$ [$h$/Mpc]
+6. $k_{eff, 3}$ [$h$/Mpc]
+7. Unnormalized Bispectrum
+8. Normalization of Bispectrum
+9. Bispectrum $B(k_1, k_2, k_3)$
