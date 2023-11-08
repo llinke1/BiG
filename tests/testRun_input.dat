@@ -1,2 +1,2 @@
-../examples/test_grid_512_1.bigfile/
-../examples/test_grid_512_2.bigfile/
+../examples/test_grid_512_1.npy
+../examples/test_grid_512_2.npy
