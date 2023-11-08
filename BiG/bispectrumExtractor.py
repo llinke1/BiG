@@ -19,8 +19,9 @@ class bispectrumExtractor:
         """
         self.L=L
         self.Nmesh=Nmesh
-        self.kbinedges=kbinedges
-        self.Nks=len(kbinedges[0])
+        if kbinedges!=[]:
+            self.kbinedges=kbinedges
+            self.Nks=len(kbinedges[0])
         self.prefactor=self.L**6/self.Nmesh**9
         self.verbose=verbose
 
@@ -254,12 +255,12 @@ class bispectrumExtractor:
         return bispec
         
 
-    def calculateBispectrum_slow(self, filename, mode='equilateral', filetype='numpy'):
+    def calculateBispectrum_slow(self, filename, mode='equilateral', filetype='numpy', custom_kbinedges_low=[], custom_kbinedges_high=[]):
         """Calculates the unnormalized Bispectrum with the slower (but less memory intensive) algortihm
 
         Args:
             filename (string): path to file containing real space density field (in numpy binary format)
-            mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
+            mode (str, optional): Which k-triangles to consider. Can be 'equilateral', 'all' or 'custom'. Defaults to 'equilateral'. If 'custom': bin-edges of k need to be provided
             filetype (str, optional): Type of density file. Currently only numpy is accepted. Default: 'numpy'
 
 
@@ -302,18 +303,32 @@ class bispectrumExtractor:
                             tmp=jnp.sum(Ik1*Ik2*Ik3)
                             del Ik3
                             bispec.append(tmp)
+        elif mode=='custom':
+            if (custom_kbinedges_low==[]) or (custom_kbinedges_high==[]):
+                raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
+            for i in range(len(custom_kbinedges_low)):
+                Ik1=self.calculateIk(field_fourier, custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
+                Ik2=self.calculateIk(field_fourier, custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
+                Ik3=self.calculateIk(field_fourier, custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
+
+                tmp=jnp.sum(Ik1*Ik2*Ik3)
+                del Ik1
+                del Ik2
+                del Ik3
+
+                bispec.append(tmp)
         else:
-            raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
+            raise ValueError(f"Mode cannot be {mode}, has to be either 'all', 'equilateral' or 'custom'")
         
         return bispec
     
 
 
-    def calculateBispectrumNormalization_slow(self, mode='equilateral'):
+    def calculateBispectrumNormalization_slow(self, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[]):
         """Calculates the normalization with the slower (but less memory intensive) algortihm. Only needs to be run once for all simulations with the same L and Nmesh
 
         Args:
-            mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
+            mode (str, optional): Which k-triangles to consider. Can be 'equilateral', 'all' or 'custom'. Defaults to 'equilateral'. If 'custom': bin-edges of k need to be provided
 
         Warning:
            This algorithm should be the same speed as calculateBispectrumNormalization for equilateral triangles, but significantly slower for all triangles!
@@ -352,19 +367,34 @@ class bispectrumExtractor:
                             del Norm3
                             normalization.append(tmp)
                     del Norm2
+        elif mode=='custom':
+            if (custom_kbinedges_low==[]) or (custom_kbinedges_high==[]):
+                raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
+            for i in range(len(custom_kbinedges_low)):
+                Norm1=self.calculateIk(Ones, custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
+                Norm2=self.calculateIk(Ones, custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
+                Norm3=self.calculateIk(Ones, custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
+
+                tmp=jnp.sum(Norm1*Norm2*Norm3)
+                del Norm1
+                del Norm2
+                del Norm3
+                normalization.append(tmp)
+
+
         else:
-            raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
+            raise ValueError(f"Mode cannot be {mode}, has to be either 'all','equilateral' or 'custom'")
         
         return normalization
     
 
-    def calculateEffectiveTriangle_slow(self, mode='equilateral'):
+    def calculateEffectiveTriangle_slow(self, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[]):
         """Calculates the (unnormalized) Effective Triangles with the slower (but less memory intensive) algortihm. Only needs to be run once for all simulations with the same L and Nmesh
 
         uses Eq. 3.7 from https://arxiv.org/pdf/1908.01774.pdf
         
         Args:
-            mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
+            mode (str, optional): Which k-triangles to consider. Can be 'equilateral', 'all' or 'custom'. Defaults to 'equilateral'. If 'custom': bin-edges of k need to be provided
 
         Warning:
            This algorithm should be the same speed as calculateEffectiveTriangle for equilateral triangles, but significantly slower for all triangles!
@@ -418,8 +448,36 @@ class bispectrumExtractor:
 
                     del Norm2
                     del Ik_Q2
+        elif mode=='custom':
+            if (custom_kbinedges_low==[]) or (custom_kbinedges_high==[]):
+                raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
+            for i in range(len(custom_kbinedges_low)):
+                Norm2=self.calculateIk(Ones, custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
+                Norm3=self.calculateIk(Ones, custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
+
+                Ik_Q1=self.calculateIk(self.kmesh, custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
+                k1=jnp.sum(Ik_Q1*Norm2*Norm3)
+                del Ik_Q1
+
+                Norm1=self.calculateIk(Ones, custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
+                Ik_Q2=self.calculateIk(self.kmesh, custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
+                k2=jnp.sum(Norm1*Ik_Q2*Norm3)
+                del Ik_Q2
+                del Norm3
+
+
+                Ik_Q3=self.calculateIk(self.kmesh, custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
+                k3=jnp.sum(Norm1*Norm2*Ik_Q3)
+                del Ik_Q3
+
+
+                del Norm1
+                del Norm2
+
+                effectiveKs.append([k1,k2,k3])
+
         else:
-            raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
+            raise ValueError(f"Mode cannot be {mode}, has to be either 'all','equilateral' or 'custom'")
         
         return effectiveKs
 
