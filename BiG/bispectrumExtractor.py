@@ -368,7 +368,7 @@ class bispectrumExtractor:
                             normalization.append(tmp)
                     del Norm2
         elif mode=='custom':
-            if (custom_kbinedges_low==[]) or (custom_kbinedges_high==[]):
+            if (len(custom_kbinedges_low)==0) or (len(custom_kbinedges_high)==0):
                 raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
             for i in range(len(custom_kbinedges_low)):
                 Norm1=self.calculateIk(Ones, custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
