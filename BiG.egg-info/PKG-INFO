@@ -11,7 +11,3 @@ Classifier: License :: OSI Approved :: GNU General Public License v3 or later (G
 Classifier: Operating System :: POSIX :: Linux
 Classifier: Programming Language :: Python :: 3
 Classifier: Topic :: Scientific/Engineering :: Astronomy
-Requires-Dist: numpy
-Requires-Dist: argparse
-Requires-Dist: pathlib
-Requires-Dist: jax
