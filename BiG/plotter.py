@@ -126,24 +126,37 @@ class plotter:
         finalizePlot(fig.get_axes, outputFn=outputFn, showplot=showplot, tightlayout=tightlayout, showlegend=False)
         
 
-    def plotBispectrumTriangle(self, k3, outputFn="", showplot=True, tightlayout=True, names=[], vmin=0, vmax=1):
+    def plotBispectrumTriangle(self, k3, outputFn="", showplot=True, tightlayout=False, names=[], vmin=0, vmax=1):
         if len(names)==0:
             names=list(self.ks.keys())
         N=len(names)
-        fig, axes=plt.subplots(ncols=N)
-        for name in names:
-            ax=fig.add_subplot()
-            ax.set_title(name+r", $k_3=$"+f"{k3}"+ r"[$h$/Mpc]")
 
+        if N>1:
+            fig, axes=plt.subplots(ncols=N, figsize=(N*5+2, 5))
+            for i, name in enumerate(names):
+
+                axes[i].set_title(name+r", $k_3=$"+f"{k3}"+ r"[$h$/Mpc]")
+
+                mask=(self.kbinedges_low[name][:,2]<k3) \
+                &(self.kbinedges_high[name][:,2]>k3)
+
+                img=axes[i].scatter(self.ratio_13[name][mask], self.ratio_23[name][mask], c=self.bispecs[name][mask], vmin=vmin, vmax=vmax)
+
+                axes[i].set_xlabel(r'$k_1/k_3$')
+                axes[i].set_ylabel(r'$k_2/k_3$')
+            fig.colorbar(img, ax=axes.ravel(), label=r'$B(k_1, k_2, k_3)$', orientation='vertical') 
+        else:
+            name=names[0]
+            fig, axes=plt.subplots(figsize=(7,5))
+            axes.set_title(name)
             mask=(self.kbinedges_low[name][:,2]<k3) \
-            &(self.kbinedges_high[name][:,2]>k3)
+                &(self.kbinedges_high[name][:,2]>k3)
 
-            img=ax.scatter(self.ratio_13[name][mask], self.ratio_23[name][mask], c=self.bispecs[name][mask], vmin=vmin, vmax=vmax)
+            img=axes.scatter(self.ratio_13[name][mask], self.ratio_23[name][mask], c=self.bispecs[name][mask], vmin=vmin, vmax=vmax)
 
-            ax.set_xlabel(r'$k_1/k_3$')
-            ax.set_ylabel(r'$k_2/k_3$')
+            axes.set_xlabel(r'$k_1/k_3$')
+            axes.set_ylabel(r'$k_2/k_3$')
+            fig.colorbar(img, ax=axes, label=r'$B(k_1, k_2, k_3)$', orientation='vertical')
+        
 
-
-        fig.colorbar(img)
-
-        finalizePlot(ax, outputFn=outputFn, showplot=showplot, tightlayout=tightlayout, showlegend=False)
+        finalizePlot(axes, outputFn=outputFn, showplot=showplot, tightlayout=tightlayout, showlegend=False)
