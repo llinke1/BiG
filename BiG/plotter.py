@@ -95,13 +95,13 @@ class plotter:
 
         N=len(names)
 
-        if len(colors)==0:
+        if len(colors)!=N:
+            colors=[]
             cmap=plt.get_cmap(self.cmap)
             for i in range(N):
                 a=(i+1)/(N+1)
                 c=cmap(a)
                 colors.append(c)
-
 
         fig,ax=plt.subplots()
         ax.loglog()
@@ -115,7 +115,7 @@ class plotter:
             k=self.ks[name][:,2][mask]
             bispec=self.bispecs[name][mask]
             if len(markers)==0:
-                ax.plot(k, bispec, label=name, c=colors[i])
+                ax.plot(k, bispec, label=name, ls=':', marker='x', c=colors[i])
             else:
                 ax.plot(k, bispec, label=name, ls=':', marker=markers[i], color=colors[i])
         
