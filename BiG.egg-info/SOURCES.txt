@@ -2,6 +2,8 @@ README.md
 setup.py
 BiG/__init__.py
 BiG/bispectrumExtractor.py
+BiG/helpers_plot.py
+BiG/plotter.py
 BiG.egg-info/PKG-INFO
 BiG.egg-info/SOURCES.txt
 BiG.egg-info/dependency_links.txt
