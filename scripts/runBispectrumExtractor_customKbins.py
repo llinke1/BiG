@@ -115,8 +115,6 @@ for f in filenames:
             print(f"Needed {time2-time1} seconds to run")
             time1=time2
 
-    
-
     outfn_now=outfn+Path(f.strip()).stem+".dat"
 
     with open(outfn_now, "w") as o:
@@ -127,7 +125,7 @@ for f in filenames:
 
         for i in range(len(kbinedges_cen)):
             if args.effectiveTriangles:
-                print(kbinedges_cen[i][0], kbinedges_cen[i][1], kbinedges_cen[i][2], effTriangles[i][1]/norm[i], effTriangles[i][2]/norm[i], effTriangles[i][3]/norm[i], bispec[i], norm[i], bispec[i]/norm[i]*Xtract.prefactor, file=o)
+                print(kbinedges_cen[i][0], kbinedges_cen[i][1], kbinedges_cen[i][2], effTriangles[i][0]/norm[i], effTriangles[i][1]/norm[i], effTriangles[i][2]/norm[i], bispec[i], norm[i], bispec[i]/norm[i]*Xtract.prefactor, file=o)
             else:
                 print(kbinedges_cen[i][0], kbinedges_cen[i][1], kbinedges_cen[i][2], bispec[i], norm[i], bispec[i]/norm[i]*Xtract.prefactor, file=o)
 

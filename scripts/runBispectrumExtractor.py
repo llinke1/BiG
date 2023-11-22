@@ -20,10 +20,10 @@ parser.add_argument("--kbinmode", help='How to bin the ks, can be lin or log', d
 parser.add_argument("--mode", help='Which k-triangles to calculate. Can be all or equilateral')
 parser.add_argument("--outfn", help='Prefix for output files')
 parser.add_argument("--infiles", help='File with names of density files')
-parser.add_argument("--verbose", help='Verbosity', type=bool, default=True)
-parser.add_argument("--doTiming", help='Whether to time the measurements', type=bool, default=True)
+parser.add_argument("--verbose", help='Verbosity', action='store_true')
+parser.add_argument("--doTiming", help='Whether to time the measurements', action='store_true')
 parser.add_argument("--filetype", help="Type of density file. Must be numpy.", default='numpy')
-parser.add_argument("--effectiveTriangles", help="Whether to calculate and output the effective k-triangles", type=bool, default=False)
+parser.add_argument("--effectiveTriangles", help="Whether to calculate and output the effective k-triangles", action='store_true')
 
 args = parser.parse_args()
 
