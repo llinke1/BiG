@@ -130,12 +130,11 @@ class plotter:
         if len(names)==0:
             names=list(self.ks.keys())
         N=len(names)
-
         if N>1:
-            fig, axes=plt.subplots(ncols=N, figsize=(N*5+2, 5))
-            for i, name in enumerate(names):
-
-                axes[i].set_title(name+r", $k_3=$"+f"{k3}"+ r"[$h$/Mpc]")
+            fig, axes=plt.subplots(ncols=N, figsize=(N*5+5, 5))
+            for i,name in enumerate(names):
+                
+                axes[i].set_title(name+r", $k_3=$"+f"{k3}"+ r"\,$h$/Mpc")
 
                 mask=(self.kbinedges_low[name][:,2]<k3) \
                 &(self.kbinedges_high[name][:,2]>k3)
@@ -144,20 +143,21 @@ class plotter:
 
                 axes[i].set_xlabel(r'$k_1/k_3$')
                 axes[i].set_ylabel(r'$k_2/k_3$')
-            fig.colorbar(img, ax=axes.ravel(), label=r'$B(k_1, k_2, k_3)$', orientation='vertical') 
+
+
+            fig.colorbar(img, ax=axes.ravel(), label=r'$B(k_1, k_2, k_3)$')
         else:
-            name=names[0]
             fig, axes=plt.subplots(figsize=(7,5))
-            axes.set_title(name+r", $k_3=$"+f"{k3}"+ r"[$h$/Mpc]")
+            name=names[0] 
+            axes.set_title(name+r", $k_3=$"+f"{k3}"+ r"\,$h$/Mpc")
+
             mask=(self.kbinedges_low[name][:,2]<k3) \
                 &(self.kbinedges_high[name][:,2]>k3)
 
             img=axes.scatter(self.ratio_13[name][mask], self.ratio_23[name][mask], c=self.bispecs[name][mask], vmin=vmin, vmax=vmax)
-
-
             axes.set_xlabel(r'$k_1/k_3$')
             axes.set_ylabel(r'$k_2/k_3$')
-            fig.colorbar(img, ax=axes, label=r'$B(k_1, k_2, k_3)$', orientation='vertical')
-        
 
-        finalizePlot(axes, outputFn=outputFn, showplot=showplot, tightlayout=tightlayout, showlegend=False)
+            fig.colorbar(img, ax=axes, label=r'$B(k_1, k_2, k_3)$')
+
+        finalizePlot(fig.get_axes, outputFn=outputFn, showplot=showplot, tightlayout=tightlayout, showlegend=False)
