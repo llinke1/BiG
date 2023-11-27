@@ -304,7 +304,7 @@ class bispectrumExtractor:
                             del Ik3
                             bispec.append(tmp)
         elif mode=='custom':
-            if (custom_kbinedges_low==[]) or (custom_kbinedges_high==[]):
+            if (len(custom_kbinedges_low)==0) or (len(custom_kbinedges_high)==0):
                 raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
             for i in range(len(custom_kbinedges_low)):
                 Ik1=self.calculateIk(field_fourier, custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
@@ -449,7 +449,7 @@ class bispectrumExtractor:
                     del Norm2
                     del Ik_Q2
         elif mode=='custom':
-            if (custom_kbinedges_low==[]) or (custom_kbinedges_high==[]):
+            if (len(custom_kbinedges_low)==0) or (len(custom_kbinedges_high)==0):
                 raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
             for i in range(len(custom_kbinedges_low)):
                 Norm2=self.calculateIk(Ones, custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
