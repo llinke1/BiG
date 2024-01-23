@@ -9,7 +9,7 @@ os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform" # This is needed so that 
 print("Warning: Powerspectrum is calculated unnormalized!")
 
 # COMMANDLINE PARSING
-parser = argparse.ArgumentParser(description='Measures 3D bispectrum.')
+parser = argparse.ArgumentParser(description='Measures 3D powerspectrum.')
 
 parser.add_argument("--L", help='box side length [Mpc/h]', type=float)
 parser.add_argument("--Nmesh", help='Number of grid cells along one dimension', type=int)
