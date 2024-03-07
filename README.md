@@ -38,7 +38,7 @@ The bispectrum extractor reads the file names of density maps from an input file
 
 ### Measure bispectrum
 The bispectrum is measured with `python scripts/runBispectrumExtractor.py`. The command line arguments are
-* **L**: box side length [Mpc/h]
+* **L**: box side length [Mpc/h]. If you are using a folded box, this needs to be L/2^k where k is the number of folds!
 * **Nmesh**: Number of grid cells along one dimension
 * **Nkbins**: Number of $k$ bins
 * **kmin**: Minimal $k$ [h/Mpc]

@@ -11,7 +11,7 @@ os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform" # This is needed so that 
 # COMMANDLINE PARSING
 parser = argparse.ArgumentParser(description='Measures 3D bispectrum.')
 
-parser.add_argument("--L", help='box side length [Mpc/h]', type=float)
+parser.add_argument("--L", help='box side length [Mpc/h]. If you are using a folded box, this needs to be L/(2^k) where k is the number of folds!', type=float)
 parser.add_argument("--Nmesh", help='Number of grid cells along one dimension', type=int)
 parser.add_argument("--Nkbins", help='Number of k bins, will be binned linearly or log depending on kbinmode', type=int)
 parser.add_argument("--kmin", help='Minimal k [Mpc/h]', type=float)
