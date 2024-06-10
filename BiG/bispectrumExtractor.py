@@ -1,10 +1,10 @@
 
 import numpy as np
-
+import jax 
+#jax.config.update('jax_platform_name', 'cpu')
 import jax.numpy as jnp
 from jax import device_put, devices
 from jax import jit
-
 
 class bispectrumExtractor:
     def __init__(self, L, Nmesh, kbinedges, verbose=True) -> None:
@@ -38,7 +38,7 @@ class bispectrumExtractor:
         Returns:
             jnp.array: Jax Numpy array, on device
         """
-        idx, idy, idz=np.indices((self.Nmesh, self.Nmesh, self.Nmesh))
+        idx, idy, idz= np.indices((self.Nmesh, self.Nmesh, self.Nmesh))
         idx = idx - idx.shape[0]/2
         idy = idy - idy.shape[1]/2
         idz = idz - idz.shape[2]/2
@@ -72,8 +72,10 @@ class bispectrumExtractor:
         
         if filetype=='numpy':
             field_real=np.load(filename)
+        elif filetype=='direct':#directly passing the numpy array, without having to load it from file
+            field_real=filename
         else:
-            raise ValueError(f"Filetype cannot be {filetype}, has to be 'numpy'")
+            raise ValueError(f"Filetype cannot be {filetype}, has to be 'numpy' or 'direct'")
 
 
         dev_field_real=device_put(np.array(field_real, dtype=np.float32))
@@ -166,14 +168,14 @@ class bispectrumExtractor:
         if mode=='equilateral':
             for i in range(self.Nks):
                
-                tmp=np.sum(Norms[:,:,:,i]**3)
+                tmp=jnp.sum(Norms[:,:,:,i]**3)
                 normalization.append(tmp)
         elif mode=='all':
             for i in range(self.Nks):
                 for j in range(i, self.Nks):
                     for k in range(j, self.Nks):
-                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
-                            tmp=np.sum(Norms[:,:,:,i]*Norms[:,:,:,j]*Norms[:,:,:,k])
+                        if self.kbinedges[2][k]<self.kbinedges[2][i]+self.kbinedges[2][j]:
+                            tmp=jnp.sum(Norms[:,:,:,i]*Norms[:,:,:,j]*Norms[:,:,:,k])
                             normalization.append(tmp)
         
         return normalization
@@ -198,16 +200,16 @@ class bispectrumExtractor:
         if mode=='equilateral':
             for i in range(self.Nks):
                
-                k=np.sum(Norms[:,:,:,i]**2*Ik_Qs[:,:,:,i])
+                k=jnp.sum(Norms[:,:,:,i]**2*Ik_Qs[:,:,:,i])
                 effectiveKs.append([k,k,k])
         elif mode=='all':
             for i in range(self.Nks):
                 for j in range(i, self.Nks):
                     for k in range(j, self.Nks):
-                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
-                            k1=np.sum(Ik_Qs[:,:,:,i]*Norms[:,:,:,j]*Norms[:,:,:,k])
-                            k2=np.sum(Norms[:,:,:,i]*Ik_Qs[:,:,:,j]*Norms[:,:,:,k])
-                            k3=np.sum(Norms[:,:,:,i]*Norms[:,:,:,j]*Ik_Qs[:,:,:,k])
+                        if self.kbinedges[2][k]<self.kbinedges[2][i]+self.kbinedges[2][j]:
+                            k1=jnp.sum(Ik_Qs[:,:,:,i]*Norms[:,:,:,j]*Norms[:,:,:,k])
+                            k2=jnp.sum(Norms[:,:,:,i]*Ik_Qs[:,:,:,j]*Norms[:,:,:,k])
+                            k3=jnp.sum(Norms[:,:,:,i]*Norms[:,:,:,j]*Ik_Qs[:,:,:,k])
 
                             effectiveKs.append([k1,k2,k3])
         
@@ -240,14 +242,14 @@ class bispectrumExtractor:
                 Ik=Iks[:,:,:,i]
                 print(Ik[Ik!=0].shape)
                 
-                tmp=np.sum(Iks[:,:,:,i]**3)
+                tmp=jnp.sum(Iks[:,:,:,i]**3)
                 bispec.append(tmp)
         elif mode=='all':
             for i in range(self.Nks):
                 for j in range(i, self.Nks):
                     for k in range(j, self.Nks):
-                        if self.kbinedges[k][2]<self.kbinedges[i][2]+self.kbinedges[j][2]:
-                            tmp=np.sum(Iks[:,:,:,i]*Iks[:,:,:,j]*Iks[:,:,:,k])
+                        if self.kbinedges[2][k]<self.kbinedges[2][i]+self.kbinedges[2][j]:
+                            tmp=jnp.sum(Iks[:,:,:,i]*Iks[:,:,:,j]*Iks[:,:,:,k])
                             bispec.append(tmp)
         else:
             raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
@@ -402,7 +404,7 @@ class bispectrumExtractor:
         Returns:
             list: unnormalized bispectrum for each triangle configuration
         """
-        Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=np.float16)
+        Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=jnp.float16)
 
         effectiveKs=[]
 
