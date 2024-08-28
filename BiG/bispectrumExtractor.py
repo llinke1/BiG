@@ -4,7 +4,8 @@ import numpy as np
 import jax.numpy as jnp
 from jax import device_put, devices
 from jax import jit
-
+from jax import config
+config.update('jax_enable_x64', True)
 
 class bispectrumExtractor:
     def __init__(self, L, Nmesh, kbinedges, verbose=True) -> None:
@@ -94,7 +95,7 @@ class bispectrumExtractor:
         """
         field_tmp=self.applyMask(field_fourier, kmin, kmax)
 
-        field_tmp=jnp.fft.ifftn(jnp.fft.ifftshift(field_tmp)).real
+        field_tmp=jnp.fft.ifftn(jnp.fft.ifftshift(field_tmp))#.real
         return field_tmp
     
 
@@ -111,7 +112,7 @@ class bispectrumExtractor:
         Returns:
             np.ndarray: Array containing all Iks (on CPU)
         """
-        Iks=np.zeros((self.Nmesh, self.Nmesh, self.Nmesh, self.Nks), dtype=np.complex64)
+        Iks=np.zeros((self.Nmesh, self.Nmesh, self.Nmesh, self.Nks), dtype=complex)
         for i in range(self.Nks):
             Iks[:,:,:,i]=self.calculateIk(field_fourier, self.kbinedges[0][i], self.kbinedges[1][i])
         Iks=device_put(Iks, devices("cpu")[0])
@@ -324,7 +325,7 @@ class bispectrumExtractor:
     
 
 
-    def calculateBispectrumNormalization_slow(self, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[]):
+    def calculateBispectrumNormalization_slow(self, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[], precision=np.float64):
         """Calculates the normalization with the slower (but less memory intensive) algortihm. Only needs to be run once for all simulations with the same L and Nmesh
 
         Args:
@@ -336,7 +337,7 @@ class bispectrumExtractor:
         Returns:
             list: unnormalized bispectrum for each triangle configuration
         """
-        Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=np.float16)
+        Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=precision)
 
         normalization=[]
         if mode=='equilateral':
@@ -388,7 +389,7 @@ class bispectrumExtractor:
         return normalization
     
 
-    def calculateEffectiveTriangle_slow(self, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[]):
+    def calculateEffectiveTriangle_slow(self, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[], precision=np.float64):
         """Calculates the (unnormalized) Effective Triangles with the slower (but less memory intensive) algortihm. Only needs to be run once for all simulations with the same L and Nmesh
 
         uses Eq. 3.7 from https://arxiv.org/pdf/1908.01774.pdf
@@ -402,7 +403,7 @@ class bispectrumExtractor:
         Returns:
             list: unnormalized bispectrum for each triangle configuration
         """
-        Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=np.float16)
+        Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=precision)
 
         effectiveKs=[]
 
