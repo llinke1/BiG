@@ -1,4 +1,4 @@
 examples/
 __pycache__/
 tests/__pycache__/
-*.egg-info
+BiG.egg-info/
