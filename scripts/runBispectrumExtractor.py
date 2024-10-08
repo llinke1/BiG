@@ -27,8 +27,8 @@ parser.add_argument("--effectiveTriangles", help="Whether to calculate and outpu
 
 args = parser.parse_args()
 
-if not all(vars(args).values()):
-    parser.error("Not the right number of command line parameters! All are required!")
+# if not all(vars(args).values()):
+#     parser.error("Not the right number of command line parameters! All are required!")
 
 L=args.L
 Nmesh=args.Nmesh
