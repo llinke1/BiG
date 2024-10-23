@@ -16,6 +16,7 @@ parser.add_argument("--Nmesh", help='Number of grid cells along one dimension', 
 parser.add_argument("--Nkbins", help='Number of k bins, will be binned linearily', type=int)
 parser.add_argument("--kmin", help='Minimal k [Mpc/h]', type=float)
 parser.add_argument("--kmax", help='Maximal k [Mpc/h]', type=float)
+parser.add_argument("--kbinmode", help='How to bin the ks, can be lin or log', default='lin')
 parser.add_argument("--outfn", help='Prefix for output files')
 parser.add_argument("--infiles", help='File with names of density files')
 parser.add_argument("--verbose", help='Verbosity', type=bool, default=True)
@@ -24,8 +25,8 @@ parser.add_argument("--filetype", help="Type of density file. Must be numpy.", d
 
 args = parser.parse_args()
 
-if not all(vars(args).values()):
-    parser.error("Not the right number of command line parameters! All are required!")
+# if not all(vars(args).values()):
+#     parser.error("Not the right number of command line parameters! All are required!")
 
 L=args.L
 Nmesh=args.Nmesh
@@ -41,6 +42,13 @@ if args.verbose:
     print("Finished reading CMD line arguments")
 
 # K BINS SETTING
+if args.kbinmode=='lin':
+    kbins=np.linspace(kmin, kmax, Nkbins+1)
+elif args.kbinmode=='log':
+    kbins=np.geomspace(kmin, kmax, Nkbins+1)
+else:
+    raise ValueError(f"kbinmode cannot be {args.kbinmode}, has to be either 'lin' or 'log'")
+
 
 kbins=np.linspace(kmin, kmax, Nkbins+1)
 kbins_lower=kbins[:-1]
