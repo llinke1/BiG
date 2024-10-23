@@ -8,4 +8,5 @@ BiG.egg-info/PKG-INFO
 BiG.egg-info/SOURCES.txt
 BiG.egg-info/dependency_links.txt
 BiG.egg-info/requires.txt
+BiG.egg-info/runBispectrumExtractor.py
 BiG.egg-info/top_level.txt

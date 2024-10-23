@@ -24,7 +24,8 @@ class bispectrumExtractor:
         if kbinedges!=[]:
             self.kbinedges=kbinedges
             self.Nks=len(kbinedges[0])
-        self.prefactor=self.L**6/self.Nmesh**9
+        self.prefactor=self.L**6/self.Nmesh**9 #Prefactor for bispectrum 
+        # For n-point correlations, the prefactor needs to be L^(n-1)/N^(3*n)
         self.verbose=verbose
 
         if self.verbose:
@@ -98,7 +99,7 @@ class bispectrumExtractor:
         """
         field_tmp=self.applyMask(field_fourier, kmin, kmax)
 
-        field_tmp=jnp.fft.ifftn(jnp.fft.ifftshift(field_tmp))#.real
+        field_tmp=jnp.fft.ifftn(jnp.fft.ifftshift(field_tmp)).real
         return field_tmp
     
 
@@ -508,8 +509,25 @@ class bispectrumExtractor:
         powerspec=[]
 
         for i in range(self.Nks):
-            Ik=self.calculateIk(field_fourier, self.kbinedges[0][i], self.kbinedges[1][i])
+            Ik=np.real(self.calculateIk(field_fourier, self.kbinedges[0][i], self.kbinedges[1][i]))
             tmp=jnp.sum(Ik**2)
             powerspec.append(tmp)
 
         return powerspec
+    
+
+    def calculatePowerspectrumNormalization(self, precision=np.float64):
+
+        Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=precision)
+        
+        if self.verbose:
+            print("Doing Powerspec normalization calculation")
+
+        normalization=[]
+
+        for i in range(self.Nks):
+            Norm=np.real(self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i]))
+            tmp=jnp.sum(Norm**2)
+            normalization.append(tmp)
+
+        return normalization
