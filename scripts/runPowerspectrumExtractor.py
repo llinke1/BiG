@@ -6,7 +6,7 @@ from pathlib import Path
 
 os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform" # This is needed so that GPU variables are freed if no longer needed
 
-print("Warning: Powerspectrum is calculated unnormalized!")
+#print("Warning: Powerspectrum is calculated unnormalized!")
 
 # COMMANDLINE PARSING
 parser = argparse.ArgumentParser(description='Measures 3D powerspectrum.')
@@ -50,7 +50,6 @@ else:
     raise ValueError(f"kbinmode cannot be {args.kbinmode}, has to be either 'lin' or 'log'")
 
 
-kbins=np.linspace(kmin, kmax, Nkbins+1)
 kbins_lower=kbins[:-1]
 kbins_upper=kbins[1:]
 kbins_mid=0.5*(kbins_lower+kbins_upper)
@@ -73,9 +72,15 @@ filenames=file.readlines()
 
 Xtract=BiG.bispectrumExtractor(L, Nmesh, kbinedges, args.verbose)
 
+prefactor=L**3/Nmesh**6
+
 if args.verbose:
     print("Finished initialization BispectrumExtractor")
 
+# NORM CALCULATION
+
+norm=np.array(Xtract.calculatePowerspectrumNormalization(precision=np.float32))
+norm/=prefactor
 
 # POWERSPEC CALCULATION AND OUTPUT
 for f in filenames:
@@ -89,8 +94,8 @@ for f in filenames:
     outfn_now=outfn+Path(f.strip()).stem+".dat"
 
     with open(outfn_now, "w") as o:
-        print("# k [h/Mpc] unnorm.Powerspec", file=o)
+        print("# k [h/Mpc] unnorm.Powerspec norm norm.Powerspectrum", file=o)
         for i in range(Nkbins):
-            print(kbins_mid[i], powerspec[i],  file=o)
+            print(kbins_mid[i], powerspec[i], norm[i], powerspec[i]/norm[i],  file=o)
     if args.verbose:
         print(f"Written output to {outfn_now}")
