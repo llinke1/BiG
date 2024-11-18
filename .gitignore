@@ -1,4 +1,5 @@
-examples/
+examples/*.npy
 __pycache__/
 tests/__pycache__/
 *.egg-info
+test/
