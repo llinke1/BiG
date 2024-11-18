@@ -24,7 +24,7 @@ To install this code, clone the gitrepo, go to the root folder and execute
 pip install .
 ```
 
-The files for the examples in the folder `tests` are accessible <a href=https://fileshare.uibk.ac.at/d/6e64b19298ac4e9290f3/> here </a>.
+The files for the examples in the folder `examples` are accessible <a href=https://fileshare.uibk.ac.at/d/6e64b19298ac4e9290f3/> here </a>.
 
 <!-- USAGE EXAMPLES -->
 ## Usage
