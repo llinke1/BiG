@@ -1,5 +1,5 @@
 
-<h3 align="center">Bispectrum estimator on GPUs</h3>
+<h3 align="center">Bispectrum estimator on GPUs</h3> 
 
 <p align="center">
     Code for measuring 3-D bispectra from density maps using GPUs.
@@ -8,7 +8,10 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-This code can measure the 3D-bispectra from density maps using the FFT-based measurement algorithm presented for example in <a href="https://arxiv.org/abs/1904.11055"> Tomlinson+ (2019)</a>.  Our implementation is similar to <a href="https://github.com/sjforeman/bskit/blob/master/README.md"> bskit </a>, but our code uses <a href="https://jax.readthedocs.io/en/latest/notebooks/quickstart.html">JAX </a> for GPU acceleration of the FFTs.
+This code can measure the 3D-bispectra from density maps using the FFT-based measurement algorithm presented for example in <a href="https://arxiv.org/abs/1904.11055"> Tomlinson+ (2019)</a>.  Our implementation is similar to <a href="https://github.com/sjforeman/bskit/blob/master/README.md"> bskit </a>, but our code uses <a href="https://jax.readthedocs.io/en/latest/notebooks/quickstart.html">JAX </a> for GPU acceleration of the FFTs. To refer to the first version, please use [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14181881.svg)](https://doi.org/10.5281/zenodo.14181881)
+
+
+
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -76,3 +79,24 @@ If the `effectiveTriangles` switch is set to `True`, the output will include the
 7. Unnormalized Bispectrum
 8. Normalization of Bispectrum
 9. Bispectrum $B(k_1, k_2, k_3)$
+
+
+<!-- LICENSE AND ATTRIBUTION -->
+## License and attribution
+
+The code is distributed with a GNU GPL 3.0 license, which allows you to do pretty much all you want with it, provided any resulting codes are distributed with the same license. However, if you use the code in a publication, please cite it using
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.14181881.svg)](https://doi.org/10.5281/zenodo.14181881)
+
+or the bibtex entry
+```
+@software{laila_linke_2024_14181881,
+  author       = {Laila Linke},
+  title        = {llinke1/BiG: First Release},
+  month        = nov,
+  year         = 2024,
+  publisher    = {Zenodo},
+  version      = {v1.0.0},
+  doi          = {10.5281/zenodo.14181881},
+  url          = {https://doi.org/10.5281/zenodo.14181881}
+}
+```
