@@ -11,7 +11,7 @@ config.update("jax_enable_x64", True)
 
 
 class bispectrumExtractor:
-    def __init__(self, L, Nmesh, kbinedges, verbose=True, low_mem=True) -> None:
+    def __init__(self, L, Nmesh, kbinedges, verbose=True, low_mem=True, singleField=True) -> None:
         """Initializer of bispectrumExtractor
         Also calculates mesh of k-vectors
 
@@ -31,6 +31,7 @@ class bispectrumExtractor:
         # For n-point correlations, the prefactor needs to be L^(n-1)/N^(3*n)
         self.verbose = verbose
         self.low_mem = low_mem
+        self.singleField=singleField
 
         if self.verbose:
             print("Finished setting members of bispectrumExtractor")
@@ -181,55 +182,32 @@ class bispectrumExtractor:
 
         if mode in {"equilateral", "all"}:
             for i in range(self.Nks):
-                Norm1 = (
-                    self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i])
-                    if self.low_mem
-                    else Norms[:, :, :, i]
-                )
+                Norm1 = (self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem else Norms[:, :, :, i])
 
                 if mode == "equilateral":
                     normalization.append(jnp.sum(Norm1**3))
                     continue
 
-                for j in range(i, self.Nks):
-                    Norm2 = (
-                        Norm1
-                        if i == j
-                        else (
-                            self.calculateIk(
-                                Ones, self.kbinedges[0][j], self.kbinedges[1][j]
-                            )
-                            if self.low_mem
-                            else Norms[:, :, :, j]
-                        )
-                    )
+                j_range = range(i, self.Nks) if self.singleField else range(self.Nks)
 
-                    for k in range(j, self.Nks):
-                        if (
-                            self.kbinedges[2][k]
-                            > self.kbinedges[2][i] + self.kbinedges[2][j]
-                        ):
+                for j in j_range:
+                    if i==j:
+                        Norm2=Norm1
+                    else:
+                        Norm2=(self.calculateIk(Ones, self.kbinedges[0][j], self.kbinedges[1][j]) if self.low_mem else Norms[:, :, :, j])
+
+                    k_range = range(j, self.Nks) if self.singleField else range(self.Nks)
+
+                    for k in k_range:
+                        if (self.kbinedges[2][k] > self.kbinedges[2][i] + self.kbinedges[2][j]):
                             continue
 
-                        Norm3 = (
-                            Norm1
-                            if k == i
-                            else (
-                                Norm2
-                                if k == j
-                                else (
-                                    (
-                                        self.calculateIk(
-                                            Ones,
-                                            self.kbinedges[0][k],
-                                            self.kbinedges[1][k],
-                                        )
-                                    )
-                                    if self.low_mem
-                                    else Norms[:, :, :, k]
-                                )
-                            )
-                        )
+                        if k==j:
+                            Norm3=Norm2
+                        elif k==i:
+                            Norm3=Norm1
+                        else:
+                            Norm3=(self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k]) if self.low_mem else Norms[:, :, :, k])
 
                         normalization.append(jnp.sum(Norm1 * Norm2 * Norm3))
 
@@ -279,105 +257,53 @@ class bispectrumExtractor:
         """
 
         effectiveKs = []
-        Ones = (
-            None
-            if not self.low_mem
-            else jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=precision)
-        )
+        Ones = (None if not self.low_mem
+            else jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=precision))
         Norms = None if self.low_mem else self.calculateNorms()
         Ik_Qs = None if self.low_mem else self.calculateIk_Q()
 
         if mode in {"equilateral", "all"}:
             for i in range(self.Nks):
-                Norm1 = (
-                    self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i])
-                    if self.low_mem
-                    else Norms[:, :, :, i]
-                )
-                Ik_Q1 = (
-                    self.calculateIk(
-                        self.kmesh, self.kbinedges[0][i], self.kbinedges[1][i]
-                    )
-                    if self.low_mem
-                    else Ik_Qs[:, :, :, i]
-                )
+                Norm1 = (self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem else Norms[:, :, :, i])
+                Ik_Q1 = (self.calculateIk(self.kmesh, self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem else Ik_Qs[:, :, :, i])
 
                 if mode == "equilateral":
                     k = jnp.sum(Norm1**2 * Ik_Q1)
                     effectiveKs.append([k, k, k])
                     continue
 
-                for j in range(i, self.Nks):
-                    Norm2 = (
-                        Norm1
-                        if i == j
-                        else (
-                            self.calculateIk(
-                                Ones, self.kbinedges[0][j], self.kbinedges[1][j]
-                            )
-                            if self.low_mem
-                            else Norms[:, :, :, j]
-                        )
-                    )
-                    Ik_Q2 = (
-                        Ik_Q1
-                        if i == j
-                        else (
-                            self.calculateIk(
-                                self.kmesh, self.kbinedges[0][j], self.kbinedges[1][j]
-                            )
-                            if self.low_mem
-                            else Ik_Qs[:, :, :, j]
-                        )
-                    )
+                j_range = range(i, self.Nks) if self.singleField else range(self.Nks)
 
-                    for k in range(j, self.Nks):
-                        if (
-                            self.kbinedges[2][k]
-                            > self.kbinedges[2][i] + self.kbinedges[2][j]
-                        ):
+
+                for j in j_range:
+                    if i==j:
+                        Norm2=Norm1
+                        Ik_Q2=Ik_Q1
+                    else:
+                        Norm2=(self.calculateIk(Ones, self.kbinedges[0][j], self.kbinedges[1][j]) if self.low_mem else Norms[:, :, :, j])
+                        Ik_Q2 = (self.calculateIk(self.kmesh, self.kbinedges[0][j], self.kbinedges[1][j]) if self.low_mem else Ik_Qs[:, :, :, j])
+                    
+                    k_range = range(j, self.Nks) if self.singleField else range(self.Nks)
+
+                    for k in k_range:
+                        if (self.kbinedges[2][k] > self.kbinedges[2][i] + self.kbinedges[2][j]):
                             continue
 
-                        Norm3 = (
-                            Norm1
-                            if k == i
-                            else (
-                                Norm2
-                                if k == j
-                                else (
-                                    self.calculateIk(
-                                        Ones, self.kbinedges[0][k], self.kbinedges[1][k]
-                                    )
-                                    if self.low_mem
-                                    else Norms[:, :, :, k]
-                                )
-                            )
-                        )
-                        Ik_Q3 = (
-                            Ik_Q1
-                            if k == i
-                            else (
-                                Ik_Q2
-                                if k == j
-                                else (
-                                    self.calculateIk(
-                                        self.kmesh,
-                                        self.kbinedges[0][k],
-                                        self.kbinedges[1][k],
-                                    )
-                                    if self.low_mem
-                                    else Ik_Qs[:, :, :, k]
-                                )
-                            )
-                        )
+                        if k==j:
+                            Norm3=Norm2
+                            Ik_Q3=Ik_Q2
+                        elif k==i:
+                            Norm3=Norm1
+                            Ik_Q3=Ik_Q1
+                        else:
+                            Norm3=(self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k]) if self.low_mem else Norms[:, :, :, k])
+                            Ik_Q3=(self.calculateIk(self.kmesh, self.kbinedges[0][k], self.kbinedges[1][k]) if self.low_mem else Ik_Qs[:, :, :, k])
 
-                        effectiveKs.append(
-                            [
+
+                        effectiveKs.append([
                                 jnp.sum(Ik_Q1 * Norm2 * Norm3),
                                 jnp.sum(Norm1 * Ik_Q2 * Norm3),
-                                jnp.sum(Norm1 * Norm2 * Ik_Q3),
-                            ]
-                        )
+                                jnp.sum(Norm1 * Norm2 * Ik_Q3)])
 
         elif mode == "custom":
             if not custom_kbinedges_low or not custom_kbinedges_high:
@@ -409,13 +335,7 @@ class bispectrumExtractor:
 
         return effectiveKs
 
-    def calculateBispectrum(
-        self,
-        field_real,
-        mode="equilateral",
-        custom_kbinedges_low=[],
-        custom_kbinedges_high=[],
-    ):
+    def calculateBispectrum(self,field_real,mode="equilateral",custom_kbinedges_low=[],custom_kbinedges_high=[],field_real2=None,field_real3=None):
         """Calculates the unnormalized Bispectrum using either the low-memory or high-memory code.
 
         If `self.low_mem` is True, the I_ks are calculated on the fly which requires less memory but is slower for unequilateral triangles.
@@ -434,97 +354,106 @@ class bispectrumExtractor:
             list: Unnormalized bispectrum for each triangle configuration.
         """
 
-        if self.verbose:
-            print("Doing Fourier Transformation of density field")
-        field_fourier = self.getFourierField(field_real)
+        if ((field_real2 is None) or (field_real3 is None)) and not self.singleField:
+            raise ValueError("You have set multi-field mode (singleField=False) but have only provided one density field!")
+        
+        if self.singleField and not ((field_real2 is None) and (field_real3 is None)):
+            raise ValueError("You have set single-field mode (singleField=True) but have provided multiple density fields!")
+
+        fields_fourier=[]
+        if self.singleField:
+            if self.verbose:
+                print("Doing Fourier Transformation of density field")
+            fields_fourier.append(self.getFourierField(field_real))
+        else:
+            if self.verbose:
+                print("Doing Fourier Transformation of density fields")
+            fields_fourier.append(self.getFourierField(field_real2))
+            fields_fourier.append(self.getFourierField(field_real3))
 
         if self.verbose:
             print("Doing Bispec calculation")
 
-        bispec = []
-        Iks = (
-            None if self.low_mem else self.calculateIks(field_fourier)
-        )  # Precompute all Iks if not low_mem
+        bispec=[]
+
+        Iks=[]
+        for f in fields_fourier:
+            Iks.append(None if self.low_mem else self.calculateIks(f))
 
         if mode in {"equilateral", "all"}:
             for i in range(self.Nks):
-                Ik1 = (
-                    self.calculateIk(
-                        field_fourier, self.kbinedges[0][i], self.kbinedges[1][i]
-                    )
-                    if self.low_mem
-                    else Iks[:, :, :, i]
-                )
-
+                Ik1 = (self.calculateIk(fields_fourier[0], self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem 
+                                        else Iks[0][:, :, :, i])
                 if mode == "equilateral":
-                    bispec.append(jnp.sum(Ik1**3))
+                    if self.singleField:
+                        Ik2=Ik1
+                        Ik3=Ik1
+                    else:
+                        Ik2 = (self.calculateIk(fields_fourier[1], self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem 
+                                        else Iks[1][:, :, :, i])
+                        Ik3 = (self.calculateIk(fields_fourier[2], self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem 
+                                        else Iks[2][:, :, :, i])
+                    bispec.append(jnp.sum(Ik1*Ik2*Ik3))
                     continue
 
-                for j in range(i, self.Nks):
-                    Ik2 = (
-                        Ik1
-                        if i == j
-                        else (
-                            self.calculateIk(
-                                field_fourier,
-                                self.kbinedges[0][j],
-                                self.kbinedges[1][j],
-                            )
-                            if self.low_mem
-                            else Iks[:, :, :, j]
-                        )
-                    )
+                j_range = range(i, self.Nks) if self.single_field else range(self.Nks)
 
-                    for k in range(j, self.Nks):
-                        if (
-                            self.kbinedges[2][k]
-                            > self.kbinedges[2][i] + self.kbinedges[2][j]
-                        ):
+                for j in j_range:
+                    if self.singleField:
+                        if i==j:
+                            Ik2=Ik1
+                        else:
+                            Ik2=(self.calculateIk(fields_fourier[0], self.kbinedges[0][j], self.kbinedges[1][j]) if self.low_mem 
+                                 else Iks[0][:, :, :, j])
+                    else:
+                        Ik2=(self.calculateIk(fields_fourier[1], self.kbinedges[0][j], self.kbinedges[1][j]) if self.low_mem 
+                                 else Iks[1][:, :, :, j])
+
+                    k_range = range(j, self.Nks) if self.singleField else range(self.Nks)
+
+                    for k in k_range:
+                        if (self.kbinedges[2][k] > self.kbinedges[2][i] + self.kbinedges[2][j]):
                             continue
-
-                        Ik3 = (
-                            Ik1
-                            if k == i
-                            else (
-                                Ik2
-                                if k == j
-                                else (
-                                    self.calculateIk(
-                                        field_fourier,
-                                        self.kbinedges[0][k],
-                                        self.kbinedges[1][k],
-                                    )
-                                    if self.low_mem
-                                    else Iks[:, :, :, k]
-                                )
-                            )
-                        )
-
-                        bispec.append(jnp.sum(Ik1 * Ik2 * Ik3))
-
-        elif mode == "custom":
+                        if self.singleField:
+                            if k==j:
+                                Ik3=Ik2
+                            else:
+                                Ik3=(self.calculateIk(fields_fourier[0], self.kbinedges[0][k], self.kbinedges[1][k]) if self.low_mem 
+                                 else Iks[0][:, :, :, k])
+                        else:
+                            Ik3=(self.calculateIk(fields_fourier[2], self.kbinedges[0][k], self.kbinedges[1][k]) if self.low_mem 
+                                 else Iks[2][:, :, :, k])
+                            
+                        bispec.append(jnp.sum(Ik1*Ik2*Ik3))
+        elif mode=="custom":
             if not custom_kbinedges_low or not custom_kbinedges_high:
-                raise ValueError(
-                    f"custom_kbinedges need to be provided if mode is {mode}"
-                )
+                raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
+            
 
             if self.low_mem and self.verbose:
-                print(
-                    "Warning: Using low-memory mode with custom bin edges; high-memory optimization not applicable."
-                )
+                print("Warning: Using low-memory mode with custom bin edges; high-memory optimization not applicable.")
 
-            for low, high in zip(custom_kbinedges_low, custom_kbinedges_high):
-                Ik1, Ik2, Ik3 = [
-                    self.calculateIk(field_fourier, low[i], high[i]) for i in range(3)
-                ]
-                bispec.append(jnp.sum(Ik1 * Ik2 * Ik3))
+            for i in range(len(custom_kbinedges_high)):
+                Ik1=self.calculateIk(fields_fourier[0], custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
+                if self.singleField:
+                    Ik2=self.calculateIk(fields_fourier[0], custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
+                else:
+                    Ik2=self.calculateIk(fields_fourier[1], custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
+                
+                if self.singleField:
+                    Ik3=self.calculateIk(fields_fourier[0], custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
+                else:
+                    Ik3=self.calculateIk(fields_fourier[2], custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
+
+                bispec.append(jnp.sum(Ik1*Ik2*Ik3))
+
 
         else:
-            raise ValueError(
-                f"Mode cannot be {mode}, must be either 'all', 'equilateral', or 'custom'."
-            )
+            raise ValueError(f"Mode cannot be {mode}, must be either 'all', 'equilateral', or 'custom'.")
 
         return bispec
+    
+
 
     def calculatePowerspectrum(self, field_real):
         """Calculates the unnormalized Powerspectrum
