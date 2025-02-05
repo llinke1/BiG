@@ -1,5 +1,6 @@
 import numpy as np
 from BiG import bispectrumExtractor as BiG
+from BiG import fileLoader as fl
 import argparse
 import os
 from pathlib import Path
@@ -92,16 +93,16 @@ if args.doTiming:
 
 # NORM CALCULATION
 
-norm=Xtract.calculateBispectrumNormalization_slow(mode=mode)
+# norm=Xtract.calculateBispectrumNormalization_slow(mode=mode)
 
-if args.doTiming:
-    time2=time.time()
+# if args.doTiming:
+#     time2=time.time()
 
-if args.verbose:
-    print("Finished calculating bispectrum norm")
-    if args.doTiming:
-        print(f"Needed {time2-time1} seconds to run")
-        time1=time2
+# if args.verbose:
+#     print("Finished calculating bispectrum norm")
+#     if args.doTiming:
+#         print(f"Needed {time2-time1} seconds to run")
+#         time1=time2
 
 # EFFECTIVE TRIANGLE CALCULATION
 if args.effectiveTriangles:
@@ -116,12 +117,16 @@ if args.effectiveTriangles:
             print(f"Needed {time2-time1} seconds to run")
             time1=time2
 
+loader=fl.fileloader(filetype=args.filetype)
+
 # BISPEC CALCULATION AND OUTPUT
 for f in filenames:
     if args.verbose:
         print(f"Calculating bispectrum for {f}")
     
-    bispec=Xtract.calculateBispectrum_slow(f.strip(), mode=mode, filetype=args.filetype)
+    field_real=loader.load(f.strip())
+
+    bispec=Xtract.calculateBispectrum_slow(field_real, mode=mode)
 
 
     if args.doTiming:

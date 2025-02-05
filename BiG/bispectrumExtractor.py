@@ -62,25 +62,15 @@ class bispectrumExtractor:
         return field * ((self.kmesh <= kmax) & (self.kmesh >= kmin))
 
 
-    def getFourierField(self, filename, filetype='numpy'):
+    def getFourierField(self, field_real):
         """Reads out real-space density field and gives back Fourier transformed field
 
         Args:
-            filename (string): path to file containing real space density field (currently only numpy binary format is accepted)
-            filetype (string): 'numpy' if file is in numpy binary format. Default: numpy. Warning: Currently nothing else accepted
-
+            field_real (np.ndarray): Density field in real space
         Returns:
             jnp.ndarray[complex]: Fourier transformed density field
         """
         
-        if filetype=='numpy':
-            field_real=np.load(filename)
-        elif filetype=='direct':#directly passing the numpy array, without having to load it from file
-            field_real=filename
-        else:
-            raise ValueError(f"Filetype cannot be {filetype}, has to be 'numpy' or 'direct'")
-
-
         dev_field_real=device_put(np.array(field_real, dtype=np.float32))
         field_fourier=jnp.fft.fftshift(jnp.fft.fftn(dev_field_real))
         del dev_field_real
@@ -220,13 +210,12 @@ class bispectrumExtractor:
 
 
 
-    def calculateBispectrum(self, filename, mode='equilateral', filetype='numpy'):
+    def calculateBispectrum(self, field_real, mode='equilateral'):
         """Calculates the unnormalized Bispectrum with the faster (but more memory intensive) algorithm
 
         Args:
-            filename (string): path to file containing real space density field (in numpy binary format)
+            field_real (np.ndarray): Real space density field (in numpy binary format)
             mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
-            filetype (str, optional): Type of density file. Currently only numpy is accepted. Default: 'numpy'
 
         Warning:
             This algorithm requires a lot of memory, in particular if we look at many k-bins! 
@@ -235,7 +224,7 @@ class bispectrumExtractor:
         Returns:
             list: unnormalized bispectrum for each triangle configuration
         """
-        field_fourier=self.getFourierField(filename, filetype)
+        field_fourier=self.getFourierField(field_real)
         
         Iks=self.calculateIks(field_fourier)
 
@@ -260,13 +249,12 @@ class bispectrumExtractor:
         return bispec
         
 
-    def calculateBispectrum_slow(self, filename, mode='equilateral', filetype='numpy', custom_kbinedges_low=[], custom_kbinedges_high=[]):
+    def calculateBispectrum_slow(self, field_real, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[]):
         """Calculates the unnormalized Bispectrum with the slower (but less memory intensive) algortihm
 
         Args:
-            filename (string): path to file containing real space density field (in numpy binary format)
+            field_real (np.ndarray): Real space density field (in numpy binary format)
             mode (str, optional): Which k-triangles to consider. Can be 'equilateral', 'all' or 'custom'. Defaults to 'equilateral'. If 'custom': bin-edges of k need to be provided
-            filetype (str, optional): Type of density file. Currently only numpy is accepted. Default: 'numpy'
 
 
         Warning:
@@ -279,7 +267,7 @@ class bispectrumExtractor:
         if self.verbose:
             print("Doing Fourier Transformation of density field")
 
-        field_fourier=self.getFourierField(filename, filetype)
+        field_fourier=self.getFourierField(field_real)
 
         if self.verbose:
             print("Doing Bispec calculation")
@@ -487,12 +475,12 @@ class bispectrumExtractor:
         return effectiveKs
 
 
-    def calculatePowerspectrum(self, filename, filetype='numpy'):
+    def calculatePowerspectrum(self, field_real):
         """Calculates the unnormalized Powerspectrum
 
         Args:
-            filename (string): path to file containing real space density field (in numpy binary format)
-            filetype (str, optional): Type of density file. Currently only numpy is accepted. Default: 'numpy'
+            field_real (np.ndarray): Real space density field (in numpy binary format)
+
 
 
         Returns:
@@ -502,7 +490,7 @@ class bispectrumExtractor:
         if self.verbose:
             print("Doing Fourier Transformation of density field")
 
-        field_fourier=self.getFourierField(filename, filetype)
+        field_fourier=self.getFourierField(field_real)
 
         if self.verbose:
             print("Doing Powerspec calculation")

@@ -1,5 +1,6 @@
 import numpy as np
 from BiG import bispectrumExtractor as BiG
+from BiG import fileLoader as fl
 import argparse
 import os
 from pathlib import Path
@@ -82,12 +83,15 @@ if args.verbose:
 norm=np.array(Xtract.calculatePowerspectrumNormalization(precision=np.float32))
 norm/=prefactor
 
+loader=fl.fileloader(filetype=args.filetype)
+
 # POWERSPEC CALCULATION AND OUTPUT
 for f in filenames:
     if args.verbose:
         print(f"Calculating powerspectrum for {f}")
     
-    powerspec=Xtract.calculatePowerspectrum(f.strip(), filetype=args.filetype)
+    field_real=loader.load(f)
+    powerspec=Xtract.calculatePowerspectrum(field_real)
     if args.verbose:
         print(f"Finished powerspectrum calculation")
 
