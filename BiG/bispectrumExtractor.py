@@ -9,7 +9,7 @@ from jax import config
 config.update('jax_enable_x64', True)
 
 class bispectrumExtractor:
-    def __init__(self, L, Nmesh, kbinedges, verbose=True) -> None:
+    def __init__(self, L, Nmesh, kbinedges, verbose=True, low_mem=True) -> None:
         """Initializer of bispectrumExtractor
         Also calculates mesh of k-vectors
 
@@ -27,6 +27,7 @@ class bispectrumExtractor:
         self.prefactor=self.L**6/self.Nmesh**9 #Prefactor for bispectrum 
         # For n-point correlations, the prefactor needs to be L^(n-1)/N^(3*n)
         self.verbose=verbose
+        self.low_mem=low_mem
 
         if self.verbose:
             print("Finished setting members of bispectrumExtractor")
@@ -143,242 +144,313 @@ class bispectrumExtractor:
         Iks=device_put(Iks, devices("cpu")[0])
         return Iks
     
-    def calculateBispectrumNormalization(self, mode='equilateral'):
-        """Calculates the Bispectrum Normalization. Only needs to be run once for all simulations with the same L and Nmesh
+    def calculateBispectrumNormalization(self, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[], precision=np.float64):
+        """Calculates the Bispectrum Normalization. Only needs to be run once for all simulations with the same L and Nmesh.
 
         Args:
-            mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
-
-        Warning:
-            This algorithm requires a lot of memory, in particular if we look at many k-bins! 
-            Should be the same speed as calculateBispectrumNormalization_slow for equilateral triangles, but significantly faster for all triangles!
+            mode (str, optional): Which k-triangles to consider. Can be 'equilateral', 'custom', or 'all'. Defaults to 'equilateral'.
 
         Returns:
-            list: normalizations for each triangle configuration
+            list: normalizations for each triangle configuration.
         """
-        Norms=self.calculateNorms()
-        normalization=[]
-        if mode=='equilateral':
+        normalization = []
+
+        if self.low_mem:
+            Ones = jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=precision)
+        else:
+            Norms = self.calculateNorms()
+
+        if mode in {'equilateral', 'all'}:
             for i in range(self.Nks):
-               
-                tmp=jnp.sum(Norms[:,:,:,i]**3)
-                normalization.append(tmp)
-        elif mode=='all':
-            for i in range(self.Nks):
+                Norm1 = (self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i]) if  self.low_mem else Norms[:,:,:,i] )
+                
+                if mode == 'equilateral':
+                    normalization.append(jnp.sum(Norm1**3))
+                    continue
+
                 for j in range(i, self.Nks):
+                    Norm2 = Norm1 if i == j else ( self.calculateIk(Ones, self.kbinedges[0][j], self.kbinedges[1][j]) if self.low_mem else Norms[:,:,:,j] )
+
                     for k in range(j, self.Nks):
-                        if self.kbinedges[2][k]<self.kbinedges[2][i]+self.kbinedges[2][j]:
-                            tmp=jnp.sum(Norms[:,:,:,i]*Norms[:,:,:,j]*Norms[:,:,:,k])
-                            normalization.append(tmp)
-        
+                        if self.kbinedges[2][k] > self.kbinedges[2][i] + self.kbinedges[2][j]:
+                            continue
+
+                        Norm3 = Norm1 if k == i else (Norm2 if k == j else (self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k])) if self.low_mem else  Norms[:,:,:,k])
+
+                        normalization.append(jnp.sum(Norm1 * Norm2 * Norm3))
+
+        elif mode == 'custom':
+            if not custom_kbinedges_low or not custom_kbinedges_high:
+                raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
+            if self.low_mem and self.verbose:
+                print("Warning: Using low-memory mode with custom bin edges; high-memory optimization not applicable.")
+            for low, high in zip(custom_kbinedges_low, custom_kbinedges_high):
+                Norm1, Norm2, Norm3 = [self.calculateIk(Ones, low[i], high[i]) for i in range(3)]
+                normalization.append(jnp.sum(Norm1 * Norm2 * Norm3))
+
+        else:
+            raise ValueError(f"Mode cannot be {mode}, must be either 'all', 'equilateral', or 'custom'.")
+
         return normalization
 
-    def calculateEffectiveTriangle(self, mode='equilateral'):
-        """Calculates the Effective Triangles. Only needs to be run once for all simulations with the same L and Nmesh
+    def calculateEffectiveTriangle(self, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[], precision=np.float64):
+        """Calculates the Effective Triangles. Only needs to be run once for all simulations with the same L and Nmesh.
 
         Args:
-            mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
+            mode (str, optional): Which k-triangles to consider. Can be 'equilateral', 'all', or 'custom'. Defaults to 'equilateral'.
 
-        Warning:
-            This algorithm requires a lot of memory, in particular if we look at many k-bins! 
-            Should be the same speed as calculateEffectiveTriangle_slow for equilateral triangles, but significantly faster for all triangles!
-            The effective triangles are not normalized! Need to be divided by output of calculateBispectrumNormalization!
 
         Returns:
-            list: effective triangle configurations
+            list: Effective triangle configurations.
         """
-        Norms=self.calculateNorms()
-        Ik_Qs=self.calculateIk_Q()
-        effectiveKs=[]
-        if mode=='equilateral':
-            for i in range(self.Nks):
-               
-                k=jnp.sum(Norms[:,:,:,i]**2*Ik_Qs[:,:,:,i])
-                effectiveKs.append([k,k,k])
-        elif mode=='all':
-            for i in range(self.Nks):
-                for j in range(i, self.Nks):
-                    for k in range(j, self.Nks):
-                        if self.kbinedges[2][k]<self.kbinedges[2][i]+self.kbinedges[2][j]:
-                            k1=jnp.sum(Ik_Qs[:,:,:,i]*Norms[:,:,:,j]*Norms[:,:,:,k])
-                            k2=jnp.sum(Norms[:,:,:,i]*Ik_Qs[:,:,:,j]*Norms[:,:,:,k])
-                            k3=jnp.sum(Norms[:,:,:,i]*Norms[:,:,:,j]*Ik_Qs[:,:,:,k])
-
-                            effectiveKs.append([k1,k2,k3])
         
+        effectiveKs = []
+        Ones = None if not self.low_mem else jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=precision)
+        Norms = None if self.low_mem else self.calculateNorms()
+        Ik_Qs = None if self.low_mem else self.calculateIk_Q()
+
+        if mode in {'equilateral', 'all'}:
+            for i in range(self.Nks):
+                Norm1 = self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem else Norms[:,:,:,i]
+                Ik_Q1 = self.calculateIk(self.kmesh, self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem else Ik_Qs[:,:,:,i]
+
+                if mode == 'equilateral':
+                    k = jnp.sum(Norm1**2 * Ik_Q1)
+                    effectiveKs.append([k, k, k])
+                    continue
+
+                for j in range(i, self.Nks):
+                    Norm2 = Norm1 if i == j else (self.calculateIk(Ones, self.kbinedges[0][j], self.kbinedges[1][j]) if self.low_mem else Norms[:,:,:,j])
+                    Ik_Q2 = Ik_Q1 if i == j else (self.calculateIk(self.kmesh, self.kbinedges[0][j], self.kbinedges[1][j]) if self.low_mem else Ik_Qs[:,:,:,j])
+
+                    for k in range(j, self.Nks):
+                        if self.kbinedges[2][k] > self.kbinedges[2][i] + self.kbinedges[2][j]:
+                            continue
+
+                        Norm3 = Norm1 if k == i else (Norm2 if k == j else (self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k]) if self.low_mem else Norms[:,:,:,k]))
+                        Ik_Q3 = Ik_Q1 if k == i else (Ik_Q2 if k == j else (self.calculateIk(self.kmesh, self.kbinedges[0][k], self.kbinedges[1][k]) if self.low_mem else Ik_Qs[:,:,:,k]))
+
+                        effectiveKs.append([
+                            jnp.sum(Ik_Q1 * Norm2 * Norm3),
+                            jnp.sum(Norm1 * Ik_Q2 * Norm3),
+                            jnp.sum(Norm1 * Norm2 * Ik_Q3)
+                        ])
+
+        elif mode == 'custom':
+            if not custom_kbinedges_low or not custom_kbinedges_high:
+                raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
+            if self.low_mem and self.verbose:
+                print("Warning: Using low-memory mode with custom bin edges; high-memory optimization not applicable.")
+            for low, high in zip(custom_kbinedges_low, custom_kbinedges_high):
+                Norm2, Norm3 = [self.calculateIk(Ones, low[i], high[i]) for i in (1, 2)]
+                Ik_Q1 = self.calculateIk(self.kmesh, low[0], high[0])
+                k1 = jnp.sum(Ik_Q1 * Norm2 * Norm3)
+
+                Norm1 = self.calculateIk(Ones, low[0], high[0])
+                Ik_Q2 = self.calculateIk(self.kmesh, low[1], high[1])
+                k2 = jnp.sum(Norm1 * Ik_Q2 * Norm3)
+
+                Ik_Q3 = self.calculateIk(self.kmesh, low[2], high[2])
+                k3 = jnp.sum(Norm1 * Norm2 * Ik_Q3)
+
+                effectiveKs.append([k1, k2, k3])
+
+        else:
+            raise ValueError(f"Mode cannot be {mode}, must be 'all', 'equilateral', or 'custom'.")
+
         return effectiveKs
 
 
 
-    def calculateBispectrum(self, field_real, mode='equilateral'):
-        """Calculates the unnormalized Bispectrum with the faster (but more memory intensive) algorithm
+
+    def calculateBispectrum(self, field_real, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[]):
+        """Calculates the unnormalized Bispectrum using either the low-memory or high-memory code.
 
         Args:
-            field_real (np.ndarray): Real space density field (in numpy binary format)
-            mode (str, optional): Which k-triangles to consider. Can be 'equilateral' or 'all'. Defaults to 'equilateral'.
-
-        Warning:
-            This algorithm requires a lot of memory, in particular if we look at many k-bins! 
-            Should be the same speed as calculateBispectrumNormalization_slow for equilateral triangles, but significantly faster for all triangles!
+            field_real (np.ndarray): Real space density field (in numpy binary format).
+            mode (str, optional): Which k-triangles to consider. Can be 'equilateral', 'all', 'custom'. Defaults to 'equilateral'.
 
         Returns:
-            list: unnormalized bispectrum for each triangle configuration
+            list: Unnormalized bispectrum for each triangle configuration.
         """
-        field_fourier=self.getFourierField(field_real)
         
-        Iks=self.calculateIks(field_fourier)
-
-        bispec=[]
-        if mode=='equilateral':
-            for i in range(self.Nks):
-                Ik=Iks[:,:,:,i]
-                print(Ik[Ik!=0].shape)
-                
-                tmp=jnp.sum(Iks[:,:,:,i]**3)
-                bispec.append(tmp)
-        elif mode=='all':
-            for i in range(self.Nks):
-                for j in range(i, self.Nks):
-                    for k in range(j, self.Nks):
-                        if self.kbinedges[2][k]<self.kbinedges[2][i]+self.kbinedges[2][j]:
-                            tmp=jnp.sum(Iks[:,:,:,i]*Iks[:,:,:,j]*Iks[:,:,:,k])
-                            bispec.append(tmp)
-        else:
-            raise ValueError(f"Mode cannot be {mode}, has to be either 'all' or 'equilateral'")
-        
-        return bispec
-        
-
-    def calculateBispectrum_slow(self, field_real, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[]):
-        """Calculates the unnormalized Bispectrum with the slower (but less memory intensive) algortihm
-
-        Args:
-            field_real (np.ndarray): Real space density field (in numpy binary format)
-            mode (str, optional): Which k-triangles to consider. Can be 'equilateral', 'all' or 'custom'. Defaults to 'equilateral'. If 'custom': bin-edges of k need to be provided
-
-
-        Warning:
-            This algorithm should be the same speed as calculateBispectrum for equilateral triangles, but significantly slower for all triangles!
-
-        Returns:
-            list: unnormalized bispectrum for each triangle configuration
-        """
-
         if self.verbose:
             print("Doing Fourier Transformation of density field")
-
-        field_fourier=self.getFourierField(field_real)
+        field_fourier = self.getFourierField(field_real)
 
         if self.verbose:
             print("Doing Bispec calculation")
-        bispec=[]
-        if mode=='equilateral':
+
+        bispec = []
+        Iks = None if self.low_mem else self.calculateIks(field_fourier)  # Precompute all Iks if not low_mem
+
+        if mode in {'equilateral', 'all'}:
             for i in range(self.Nks):
-                Ik=self.calculateIk(field_fourier, self.kbinedges[0][i], self.kbinedges[1][i])
-                tmp=jnp.sum(Ik**3)
-                bispec.append(tmp)
-        elif mode=='all':
-            for i in range(self.Nks):
-                Ik1=self.calculateIk(field_fourier, self.kbinedges[0][i], self.kbinedges[1][i])
+                Ik1 = self.calculateIk(field_fourier, self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem else Iks[:,:,:,i]
+
+                if mode == 'equilateral':
+                    bispec.append(jnp.sum(Ik1**3))
+                    continue
+
                 for j in range(i, self.Nks):
-                    if(i==j):
-                        Ik2=Ik1
-                    else:
-                        Ik2=self.calculateIk(field_fourier, self.kbinedges[0][j], self.kbinedges[1][j])
+                    Ik2 = Ik1 if i == j else (self.calculateIk(field_fourier, self.kbinedges[0][j], self.kbinedges[1][j]) if self.low_mem else Iks[:,:,:,j])
+
                     for k in range(j, self.Nks):
-                        if self.kbinedges[2][k]<=self.kbinedges[2][i]+self.kbinedges[2][j]:
-                            if (k==i):
-                                Ik3=Ik1
-                            elif (k==j):
-                                Ik3=Ik2
-                            else:
-                                Ik3=self.calculateIk(field_fourier, self.kbinedges[0][k], self.kbinedges[1][k])
-                            tmp=jnp.sum(Ik1*Ik2*Ik3)
-                            del Ik3
-                            bispec.append(tmp)
-        elif mode=='custom':
-            if (len(custom_kbinedges_low)==0) or (len(custom_kbinedges_high)==0):
+                        if self.kbinedges[2][k] > self.kbinedges[2][i] + self.kbinedges[2][j]:
+                            continue
+
+                        Ik3 = Ik1 if k == i else (Ik2 if k == j else (self.calculateIk(field_fourier, self.kbinedges[0][k], self.kbinedges[1][k]) if self.low_mem else Iks[:,:,:,k]))
+
+                        bispec.append(jnp.sum(Ik1 * Ik2 * Ik3))
+
+        elif mode == 'custom':
+            if not custom_kbinedges_low or not custom_kbinedges_high:
                 raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
-            for i in range(len(custom_kbinedges_low)):
-                Ik1=self.calculateIk(field_fourier, custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
-                Ik2=self.calculateIk(field_fourier, custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
-                Ik3=self.calculateIk(field_fourier, custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
 
-                tmp=jnp.sum(Ik1*Ik2*Ik3)
-                del Ik1
-                del Ik2
-                del Ik3
+            if self.low_mem and self.verbose:
+                print("Warning: Using low-memory mode with custom bin edges; high-memory optimization not applicable.")
 
-                bispec.append(tmp)
+            for low, high in zip(custom_kbinedges_low, custom_kbinedges_high):
+                Ik1, Ik2, Ik3 = [self.calculateIk(field_fourier, low[i], high[i]) for i in range(3)]
+                bispec.append(jnp.sum(Ik1 * Ik2 * Ik3))
+
         else:
-            raise ValueError(f"Mode cannot be {mode}, has to be either 'all', 'equilateral' or 'custom'")
-        
+            raise ValueError(f"Mode cannot be {mode}, must be either 'all', 'equilateral', or 'custom'.")
+
         return bispec
+
+        
+
+    # def calculateBispectrum_slow(self, field_real, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[]):
+    #     """Calculates the unnormalized Bispectrum with the slower (but less memory intensive) algortihm
+
+    #     Args:
+    #         field_real (np.ndarray): Real space density field (in numpy binary format)
+    #         mode (str, optional): Which k-triangles to consider. Can be 'equilateral', 'all' or 'custom'. Defaults to 'equilateral'. If 'custom': bin-edges of k need to be provided
+
+
+    #     Warning:
+    #         This algorithm should be the same speed as calculateBispectrum for equilateral triangles, but significantly slower for all triangles!
+
+    #     Returns:
+    #         list: unnormalized bispectrum for each triangle configuration
+    #     """
+
+    #     if self.verbose:
+    #         print("Doing Fourier Transformation of density field")
+
+    #     field_fourier=self.getFourierField(field_real)
+
+    #     if self.verbose:
+    #         print("Doing Bispec calculation")
+    #     bispec=[]
+    #     if mode=='equilateral':
+    #         for i in range(self.Nks):
+    #             Ik=self.calculateIk(field_fourier, self.kbinedges[0][i], self.kbinedges[1][i])
+    #             tmp=jnp.sum(Ik**3)
+    #             bispec.append(tmp)
+    #     elif mode=='all':
+    #         for i in range(self.Nks):
+    #             Ik1=self.calculateIk(field_fourier, self.kbinedges[0][i], self.kbinedges[1][i])
+    #             for j in range(i, self.Nks):
+    #                 if(i==j):
+    #                     Ik2=Ik1
+    #                 else:
+    #                     Ik2=self.calculateIk(field_fourier, self.kbinedges[0][j], self.kbinedges[1][j])
+    #                 for k in range(j, self.Nks):
+    #                     if self.kbinedges[2][k]<=self.kbinedges[2][i]+self.kbinedges[2][j]:
+    #                         if (k==i):
+    #                             Ik3=Ik1
+    #                         elif (k==j):
+    #                             Ik3=Ik2
+    #                         else:
+    #                             Ik3=self.calculateIk(field_fourier, self.kbinedges[0][k], self.kbinedges[1][k])
+    #                         tmp=jnp.sum(Ik1*Ik2*Ik3)
+    #                         del Ik3
+    #                         bispec.append(tmp)
+    #     elif mode=='custom':
+    #         if (len(custom_kbinedges_low)==0) or (len(custom_kbinedges_high)==0):
+    #             raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
+    #         for i in range(len(custom_kbinedges_low)):
+    #             Ik1=self.calculateIk(field_fourier, custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
+    #             Ik2=self.calculateIk(field_fourier, custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
+    #             Ik3=self.calculateIk(field_fourier, custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
+
+    #             tmp=jnp.sum(Ik1*Ik2*Ik3)
+    #             del Ik1
+    #             del Ik2
+    #             del Ik3
+
+    #             bispec.append(tmp)
+    #     else:
+    #         raise ValueError(f"Mode cannot be {mode}, has to be either 'all', 'equilateral' or 'custom'")
+        
+    #     return bispec
     
 
 
-    def calculateBispectrumNormalization_slow(self, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[], precision=np.float64):
-        """Calculates the normalization with the slower (but less memory intensive) algortihm. Only needs to be run once for all simulations with the same L and Nmesh
+    # def calculateBispectrumNormalization_slow(self, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[], precision=np.float64):
+    #     """Calculates the normalization with the slower (but less memory intensive) algortihm. Only needs to be run once for all simulations with the same L and Nmesh
 
-        Args:
-            mode (str, optional): Which k-triangles to consider. Can be 'equilateral', 'all' or 'custom'. Defaults to 'equilateral'. If 'custom': bin-edges of k need to be provided
+    #     Args:
+    #         mode (str, optional): Which k-triangles to consider. Can be 'equilateral', 'all' or 'custom'. Defaults to 'equilateral'. If 'custom': bin-edges of k need to be provided
 
-        Warning:
-           This algorithm should be the same speed as calculateBispectrumNormalization for equilateral triangles, but significantly slower for all triangles!
+    #     Warning:
+    #        This algorithm should be the same speed as calculateBispectrumNormalization for equilateral triangles, but significantly slower for all triangles!
 
-        Returns:
-            list: unnormalized bispectrum for each triangle configuration
-        """
-        Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=precision)
+    #     Returns:
+    #         list: unnormalized bispectrum for each triangle configuration
+    #     """
+    #     Ones=jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=precision)
 
-        normalization=[]
-        if mode=='equilateral':
-            for i in range(self.Nks):
-                Norm=self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i])
-                tmp=jnp.sum(Norm**3)
-                normalization.append(tmp)
-        elif mode=='all':
-            for i in range(self.Nks):
-                Norm1=self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i])
-
-
-                for j in range(i, self.Nks):
-                    if i==j:
-                        Norm2=Norm1
-                    else:
-                        Norm2=self.calculateIk(Ones, self.kbinedges[0][j], self.kbinedges[1][j])
-
-                    for k in range(j, self.Nks):
-                        if self.kbinedges[2][k]<=self.kbinedges[2][i]+self.kbinedges[2][j]:
-                            if k==i:
-                                Norm3=Norm1
-                            elif k==j:
-                                Norm3=Norm2
-                            else:
-                                Norm3=self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k])
-                            tmp=jnp.sum(Norm1*Norm2*Norm3)
-                            del Norm3
-                            normalization.append(tmp)
-                    del Norm2
-        elif mode=='custom':
-            if (len(custom_kbinedges_low)==0) or (len(custom_kbinedges_high)==0):
-                raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
-            for i in range(len(custom_kbinedges_low)):
-                Norm1=self.calculateIk(Ones, custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
-                Norm2=self.calculateIk(Ones, custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
-                Norm3=self.calculateIk(Ones, custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
-
-                tmp=jnp.sum(Norm1*Norm2*Norm3)
-                del Norm1
-                del Norm2
-                del Norm3
-                normalization.append(tmp)
+    #     normalization=[]
+    #     if mode=='equilateral':
+    #         for i in range(self.Nks):
+    #             Norm=self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i])
+    #             tmp=jnp.sum(Norm**3)
+    #             normalization.append(tmp)
+    #     elif mode=='all':
+    #         for i in range(self.Nks):
+    #             Norm1=self.calculateIk(Ones, self.kbinedges[0][i], self.kbinedges[1][i])
 
 
-        else:
-            raise ValueError(f"Mode cannot be {mode}, has to be either 'all','equilateral' or 'custom'")
+    #             for j in range(i, self.Nks):
+    #                 if i==j:
+    #                     Norm2=Norm1
+    #                 else:
+    #                     Norm2=self.calculateIk(Ones, self.kbinedges[0][j], self.kbinedges[1][j])
+
+    #                 for k in range(j, self.Nks):
+    #                     if self.kbinedges[2][k]<=self.kbinedges[2][i]+self.kbinedges[2][j]:
+    #                         if k==i:
+    #                             Norm3=Norm1
+    #                         elif k==j:
+    #                             Norm3=Norm2
+    #                         else:
+    #                             Norm3=self.calculateIk(Ones, self.kbinedges[0][k], self.kbinedges[1][k])
+    #                         tmp=jnp.sum(Norm1*Norm2*Norm3)
+    #                         del Norm3
+    #                         normalization.append(tmp)
+    #                 del Norm2
+    #     elif mode=='custom':
+    #         if (len(custom_kbinedges_low)==0) or (len(custom_kbinedges_high)==0):
+    #             raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
+    #         for i in range(len(custom_kbinedges_low)):
+    #             Norm1=self.calculateIk(Ones, custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
+    #             Norm2=self.calculateIk(Ones, custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
+    #             Norm3=self.calculateIk(Ones, custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
+
+    #             tmp=jnp.sum(Norm1*Norm2*Norm3)
+    #             del Norm1
+    #             del Norm2
+    #             del Norm3
+    #             normalization.append(tmp)
+
+
+    #     else:
+    #         raise ValueError(f"Mode cannot be {mode}, has to be either 'all','equilateral' or 'custom'")
         
-        return normalization
+    #     return normalization
     
 
     def calculateEffectiveTriangle_slow(self, mode='equilateral', custom_kbinedges_low=[], custom_kbinedges_high=[], precision=np.float64):
