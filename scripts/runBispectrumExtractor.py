@@ -93,7 +93,7 @@ if args.doTiming:
 
 # NORM CALCULATION
 
-norm=Xtract.calculateBispectrumNormalization_slow(mode=mode, precision=np.float32)
+norm=Xtract.calculateBispectrumNormalization(mode=mode, precision=np.float32)
 
 if args.doTiming:
     time2=time.time()
@@ -106,7 +106,7 @@ if args.verbose:
 
 # EFFECTIVE TRIANGLE CALCULATION
 if args.effectiveTriangles:
-    effTriangles=Xtract.calculateEffectiveTriangle_slow(mode=mode)
+    effTriangles=Xtract.calculateEffectiveTriangle(mode=mode)
 
     if args.doTiming:
         time2=time.time()
@@ -126,7 +126,7 @@ for f in filenames:
     
     field_real=loader.load(f.strip())
 
-    bispec=Xtract.calculateBispectrum_slow(field_real, mode=mode)
+    bispec=Xtract.calculateBispectrum(field_real, mode=mode)
 
 
     if args.doTiming:
