@@ -93,16 +93,16 @@ if args.doTiming:
 
 # NORM CALCULATION
 
-# norm=Xtract.calculateBispectrumNormalization_slow(mode=mode)
+norm=Xtract.calculateBispectrumNormalization_slow(mode=mode, precision=np.float32)
 
-# if args.doTiming:
-#     time2=time.time()
+if args.doTiming:
+    time2=time.time()
 
-# if args.verbose:
-#     print("Finished calculating bispectrum norm")
-#     if args.doTiming:
-#         print(f"Needed {time2-time1} seconds to run")
-#         time1=time2
+if args.verbose:
+    print("Finished calculating bispectrum norm")
+    if args.doTiming:
+        print(f"Needed {time2-time1} seconds to run")
+        time1=time2
 
 # EFFECTIVE TRIANGLE CALCULATION
 if args.effectiveTriangles:
