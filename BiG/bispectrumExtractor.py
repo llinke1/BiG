@@ -361,10 +361,11 @@ class bispectrumExtractor:
             raise ValueError("You have set single-field mode (singleField=True) but have provided multiple density fields!")
 
         fields_fourier=[]
+        fields_fourier.append(self.getFourierField(field_real))
+
         if self.singleField:
             if self.verbose:
                 print("Doing Fourier Transformation of density field")
-            fields_fourier.append(self.getFourierField(field_real))
         else:
             if self.verbose:
                 print("Doing Fourier Transformation of density fields")
