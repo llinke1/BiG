@@ -396,7 +396,7 @@ class bispectrumExtractor:
                     bispec.append(jnp.sum(Ik1*Ik2*Ik3))
                     continue
 
-                j_range = range(i, self.Nks) if self.single_field else range(self.Nks)
+                j_range = range(i, self.Nks) if self.singleField else range(self.Nks)
 
                 for j in j_range:
                     if self.singleField:
