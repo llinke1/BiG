@@ -145,7 +145,7 @@ for f in filenames:
 
     
 
-    outfn_now=outfn+Path(f.strip()).stem+".dat"
+    outfn_now=outfn+Path(f[0].strip()).stem+"_"+Path(f[1].strip()).stem+"_"+Path(f[2].strip()).stem+".dat"
 
     with open(outfn_now, "w") as o:
         if args.effectiveTriangles:
