@@ -29,9 +29,9 @@ args = parser.parse_args()
 L=args.L
 Nmesh=args.Nmesh
 
-Nkbins=args.Nkbins
-kmin=args.kmin
-kmax=args.kmax
+# Nkbins=args.Nkbins
+# kmin=args.kmin
+# kmax=args.kmax
 
 outfn=args.outfn
 infiles=args.infiles
@@ -39,13 +39,13 @@ infiles=args.infiles
 if args.verbose:
     print("Finished reading CMD line arguments")
 
-# K BINS SETTING
-if args.kbinmode=='lin':
-    kbins=np.linspace(kmin, kmax, Nkbins+1)
-elif args.kbinmode=='log':
-    kbins=np.geomspace(kmin, kmax, Nkbins+1)
-else:
-    raise ValueError(f"kbinmode cannot be {args.kbinmode}, has to be either 'lin' or 'log'")
+# # K BINS SETTING
+# if args.kbinmode=='lin':
+#     kbins=np.linspace(kmin, kmax, Nkbins+1)
+# elif args.kbinmode=='log':
+#     kbins=np.geomspace(kmin, kmax, Nkbins+1)
+# else:
+#     raise ValueError(f"kbinmode cannot be {args.kbinmode}, has to be either 'lin' or 'log'")
 
 # K BINS SETTING
 
@@ -98,7 +98,8 @@ for f in filenames:
 
     with open(outfn_now, "w") as o:
         print("# k [h/Mpc] unnorm.Powerspec norm norm.Powerspectrum", file=o)
-        for i in range(Nkbins):
+        for i in range(len(kbinedges_cen)):
+
             print(kbinedges_cen[i], powerspec[i], norm[i], powerspec[i]/norm[i],  file=o)
     if args.verbose:
         print(f"Written output to {outfn_now}")
