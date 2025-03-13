@@ -488,6 +488,7 @@ class bispectrumExtractor:
 
         return powerspec
 
+
     def calculatePowerspectrumNormalization(self, precision=np.float64):
 
         Ones = jnp.ones((self.Nmesh, self.Nmesh, self.Nmesh), dtype=precision)
