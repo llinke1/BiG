@@ -89,7 +89,7 @@ for f in filenames:
     if args.verbose:
         print(f"Calculating powerspectrum for {f}")
     
-    field_real=loader.load(f)
+    field_real=loader.load(f.strip())
     powerspec=Xtract.calculatePowerspectrum(field_real)
     if args.verbose:
         print(f"Finished powerspectrum calculation")
