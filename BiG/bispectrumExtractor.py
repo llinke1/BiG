@@ -390,15 +390,15 @@ class bispectrumExtractor:
                                         else Iks[0][:, :, :, i])
                 if mode == "equilateral":
                     if self.singleField:
-                        Ik2=Ik1
-                        Ik3=Ik1
+                        Ik1=Ik1**3
                     else:
-                        Ik2 = (self.calculateIk(fields_fourier[1], self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem 
+                        Ik1 *= (self.calculateIk(fields_fourier[1], self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem 
                                         else Iks[1][:, :, :, i])
-                        Ik3 = (self.calculateIk(fields_fourier[2], self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem 
+                        
+                        Ik1 *= (self.calculateIk(fields_fourier[2], self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem 
                                         else Iks[2][:, :, :, i])
-                    bispec.append(jnp.sum(Ik1*Ik2*Ik3))
-                    del Ik1, Ik2, Ik3
+                    bispec.append(jnp.sum(Ik1))
+                    del Ik1
                     continue
 
                 j_range = range(i, self.Nks) if self.singleField else range(self.Nks)
