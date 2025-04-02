@@ -162,8 +162,8 @@ for f in filenames:
         elif mode=='all':
             ix=0
             for i in range(Nkbins):
-                for j in range(i, Nkbins):
-                    for k in range(j, Nkbins):
+                for j in range(Nkbins):
+                    for k in range(Nkbins):
                         if kbins_mid[k]<=kbins_mid[i]+kbins_mid[j]:
                             if args.effectiveTriangles:
                                 print(kbins_mid[i], kbins_mid[j], kbins_mid[k], effTriangles[ix][0]/norm[ix], effTriangles[ix][1]/norm[ix], effTriangles[ix][2]/norm[ix],  bispec[ix], norm[ix], bispec[ix]/norm[ix]*Xtract.prefactor, file=o)
