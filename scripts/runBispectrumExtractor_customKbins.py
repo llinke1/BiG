@@ -1,5 +1,6 @@
 import numpy as np
 from BiG import bispectrumExtractor as BiG
+from BiG import fileLoader as fl
 import argparse
 import os
 from pathlib import Path
@@ -73,7 +74,7 @@ if args.doTiming:
 
 # NORM CALCULATION
 
-norm=Xtract.calculateBispectrumNormalization_slow(mode='custom', custom_kbinedges_low=kbinedges_low, custom_kbinedges_high=kbinedges_hig)
+norm=Xtract.calculateBispectrumNormalization(mode='custom', custom_kbinedges_low=kbinedges_low, custom_kbinedges_high=kbinedges_hig, precision=np.float32)
 
 if args.doTiming:
     time2=time.time()
@@ -86,7 +87,7 @@ if args.verbose:
 
 # EFFECTIVE TRIANGLE CALCULATION
 if args.effectiveTriangles:
-    effTriangles=Xtract.calculateEffectiveTriangle_slow(mode='custom', custom_kbinedges_low=kbinedges_low, custom_kbinedges_high=kbinedges_hig)
+    effTriangles=Xtract.calculateEffectiveTriangle(mode='custom', custom_kbinedges_low=kbinedges_low, custom_kbinedges_high=kbinedges_hig)
 
     if args.doTiming:
         time2=time.time()
@@ -97,12 +98,16 @@ if args.effectiveTriangles:
             print(f"Needed {time2-time1} seconds to run")
             time1=time2
 
+loader=fl.fileloader(filetype=args.filetype)
+
+
 # BISPEC CALCULATION AND OUTPUT
 for f in filenames:
     if args.verbose:
         print(f"Calculating bispectrum for {f}")
     
-    bispec=Xtract.calculateBispectrum_slow(f.strip(), mode='custom', custom_kbinedges_low=kbinedges_low, custom_kbinedges_high=kbinedges_hig, filetype=args.filetype)
+    field_real=loader.load(f.strip())
+    bispec=Xtract.calculateBispectrum(field_real, mode='custom', custom_kbinedges_low=kbinedges_low, custom_kbinedges_high=kbinedges_hig)
 
 
     if args.doTiming:
