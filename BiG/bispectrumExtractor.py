@@ -212,19 +212,21 @@ class bispectrumExtractor:
                         normalization.append(jnp.sum(Norm1 * Norm2 * Norm3))
 
         elif mode == "custom":
-            if not custom_kbinedges_low or not custom_kbinedges_high:
+            if custom_kbinedges_low is None or custom_kbinedges_high is None or  len(custom_kbinedges_low)==0 or len(custom_kbinedges_high)==0:
                 raise ValueError(
                     f"custom_kbinedges need to be provided if mode is {mode}"
                 )
-            if self.low_mem and self.verbose:
+            if not self.low_mem and self.verbose:
                 print(
                     "Warning: Using low-memory mode with custom bin edges; high-memory optimization not applicable."
                 )
             for low, high in zip(custom_kbinedges_low, custom_kbinedges_high):
-                Norm1, Norm2, Norm3 = [
-                    self.calculateIk(Ones, low[i], high[i]) for i in range(3)
-                ]
-                normalization.append(jnp.sum(Norm1 * Norm2 * Norm3))
+                Norm=self.calculateIk(Ones, low[0], high[0])
+                Norm*=self.calculateIk(Ones, low[1], high[1])
+                Norm*=self.calculateIk(Ones, low[2], high[2])
+                
+                normalization.append(jnp.sum(Norm))
+                del Norm
 
         else:
             raise ValueError(
@@ -306,11 +308,11 @@ class bispectrumExtractor:
                                 jnp.sum(Norm1 * Norm2 * Ik_Q3)])
 
         elif mode == "custom":
-            if not custom_kbinedges_low or not custom_kbinedges_high:
+            if custom_kbinedges_low is None or custom_kbinedges_high is None:
                 raise ValueError(
                     f"custom_kbinedges need to be provided if mode is {mode}"
                 )
-            if self.low_mem and self.verbose:
+            if not self.low_mem and self.verbose:
                 print(
                     "Warning: Using low-memory mode with custom bin edges; high-memory optimization not applicable."
                 )
@@ -379,7 +381,8 @@ class bispectrumExtractor:
 
         Iks=[]
         for f in fields_fourier:
-            Iks.append(None if self.low_mem else self.calculateIks(f))
+            Iks.append(None if (self.low_mem or mode=="custom") else self.calculateIks(f))
+
 
         if mode in {"equilateral", "all"}:
             for i in range(self.Nks):
@@ -395,6 +398,7 @@ class bispectrumExtractor:
                         Ik3 = (self.calculateIk(fields_fourier[2], self.kbinedges[0][i], self.kbinedges[1][i]) if self.low_mem 
                                         else Iks[2][:, :, :, i])
                     bispec.append(jnp.sum(Ik1*Ik2*Ik3))
+                    del Ik1, Ik2, Ik3
                     continue
 
                 j_range = range(i, self.Nks) if self.singleField else range(self.Nks)
@@ -418,35 +422,44 @@ class bispectrumExtractor:
                         if self.singleField:
                             if k==j:
                                 Ik3=Ik2
+                            elif k==i:
+                                Ik3=Ik1
                             else:
                                 Ik3=(self.calculateIk(fields_fourier[0], self.kbinedges[0][k], self.kbinedges[1][k]) if self.low_mem 
                                  else Iks[0][:, :, :, k])
                         else:
                             Ik3=(self.calculateIk(fields_fourier[2], self.kbinedges[0][k], self.kbinedges[1][k]) if self.low_mem 
                                  else Iks[2][:, :, :, k])
-                            
-                        bispec.append(jnp.sum(Ik1*Ik2*Ik3))
+                       
+                        result = float(jnp.sum(Ik1 * Ik2 * Ik3))
+                        bispec.append(result)
+
+                        del Ik3
+                    if not (self.singleField and i==j):
+                        del Ik2
+                del Ik1
         elif mode=="custom":
-            if not custom_kbinedges_low or not custom_kbinedges_high:
+            if custom_kbinedges_low is None or custom_kbinedges_high is None:
                 raise ValueError(f"custom_kbinedges need to be provided if mode is {mode}")
             
 
-            if self.low_mem and self.verbose:
+            if not self.low_mem and self.verbose:
                 print("Warning: Using low-memory mode with custom bin edges; high-memory optimization not applicable.")
 
             for i in range(len(custom_kbinedges_high)):
-                Ik1=self.calculateIk(fields_fourier[0], custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
+                Ik=self.calculateIk(fields_fourier[0], custom_kbinedges_low[i][0], custom_kbinedges_high[i][0])
                 if self.singleField:
-                    Ik2=self.calculateIk(fields_fourier[0], custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
+                    Ik*=self.calculateIk(fields_fourier[0], custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
                 else:
-                    Ik2=self.calculateIk(fields_fourier[1], custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
+                    Ik*=self.calculateIk(fields_fourier[1], custom_kbinedges_low[i][1], custom_kbinedges_high[i][1])
                 
                 if self.singleField:
-                    Ik3=self.calculateIk(fields_fourier[0], custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
+                    Ik*=self.calculateIk(fields_fourier[0], custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
                 else:
-                    Ik3=self.calculateIk(fields_fourier[2], custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
+                    Ik*=self.calculateIk(fields_fourier[2], custom_kbinedges_low[i][2], custom_kbinedges_high[i][2])
 
-                bispec.append(jnp.sum(Ik1*Ik2*Ik3))
+                bispec.append(jnp.sum(Ik))
+                del Ik
 
 
         else:
