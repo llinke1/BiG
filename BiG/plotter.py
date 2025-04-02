@@ -44,7 +44,7 @@ class plotter:
         self.ratio_edges_high[name]=ratio_edges_high
 
     
-    def plotBispectrum3D(self, outputFn="", showplot=True, tightlayout=False, names=[], vmin=3, vmax=20):
+    def plotBispectrum3D(self, outputFn="", showplot=True, tightlayout=False, names=[], vmin=3, vmax=20, log=True, label=r'$\ln[B(k_1, k_2, k_3)]$', alpha=1):
         if len(names)==0:
             names=list(self.ks.keys())
 
@@ -55,29 +55,43 @@ class plotter:
 
             for i, name in enumerate(names):
                 axes[i].set_title(name)
+                
+                if log:
+                    quantity=np.log(self.bispecs[name])
+                else:
+                    quantity=self.bispecs[name]
+
                 img=axes[i].scatter(self.ks[name][:,0], 
                             self.ks[name][:,1], 
                             self.ks[name][:,2], 
-                            c=np.log(self.bispecs[name]), cmap=self.cmap, vmin=vmin, vmax=vmax)
+                            c=quantity, cmap=self.cmap, vmin=vmin, vmax=vmax, alpha=alpha)
                 axes[i].set_xlabel(r'$k_1$ [$h$/Mpc]')
                 axes[i].set_ylabel(r'$k_2$ [$h$/Mpc]')
                 axes[i].set_zlabel(r'$k_3$ [$h$/Mpc]')
-            fig.colorbar(img, ax=axes.ravel(), label=r'$\ln[B(k_1, k_2, k_3)]$', orientation='vertical')
+            fig.colorbar(img, ax=axes.ravel(), label=label, orientation='vertical')
         else:
             name=names[0]
             fig, axes=plt.subplots(subplot_kw={'projection': '3d'}, figsize=(7,6))
             axes.set_title(name)
+
+                
+            if log:
+                    quantity=np.log(self.bispecs[name])
+            else:
+                    quantity=self.bispecs[name]
+
             img=axes.scatter(self.ks[name][:,0], 
                             self.ks[name][:,1], 
                             self.ks[name][:,2], 
-                            c=np.log(self.bispecs[name]), cmap=self.cmap, vmin=vmin, vmax=vmax)
+                            c=quantity, cmap=self.cmap, vmin=vmin, vmax=vmax)
             axes.set_xlabel(r'$k_1$ [$h$/Mpc]')
             axes.set_ylabel(r'$k_2$ [$h$/Mpc]')
             axes.set_zlabel(r'$k_3$ [$h$/Mpc]')
-            fig.colorbar(img, ax=axes, label=r'$\ln[B(k_1, k_2, k_3)]$', orientation='vertical')
+            fig.colorbar(img, ax=axes, label=label, orientation='vertical')
         
         
-        finalizePlot(axes, outputFn=outputFn, showplot=showplot, tightlayout=tightlayout, showlegend=False)
+        #finalizePlot(axes, outputFn=outputFn, showplot=showplot, tightlayout=tightlayout, showlegend=False)
+        return fig, axes
 
     def plotBispectrum1D(self, k1_k3=0, k2_k3=0, mode="", outputFn="", showplot=True, tightlayout=False, names=[], colors=[], markers=[]):
         if len(names)==0:
